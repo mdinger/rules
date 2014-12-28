@@ -1,0 +1,5 @@
+[package]
+
+name = "rules"
+version = "0.0.1"
+authors = ["mdinger <mdinger.bugzilla@gmail.com>"]
