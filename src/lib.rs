@@ -1,4 +1,18 @@
+#![feature(macro_rules)]
 #![feature(slicing_syntax)]
+
+#[macro_export]
+macro_rules! matches(
+    ($expression: expr, $($pattern:pat)|+) => (
+        matches!($expression, $($pattern)|+ if true)
+    );
+    ($expression: expr, $($pattern:pat)|+ if $guard: expr) => (
+        match $expression {
+            $($pattern)|+ => $guard,
+            _ => false
+        }
+    );
+);
 
 pub struct Rule {
     regex: String,
