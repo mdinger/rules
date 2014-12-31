@@ -1,6 +1,8 @@
 #![feature(macro_rules)]
 #![feature(slicing_syntax)]
 #![feature(default_type_params)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
 
 //! # Rules
 //! Rules uses regular expressions to do pattern matching using syntax
@@ -28,11 +30,11 @@
 //! These operators can be applied to groups which will be analyzed later:
 //!
 //! ```plain
-//! +       Set union
-//! |       Set union
-//! &       Set intersection
-//! -       Set difference (first minus second)
-//! ^       Symmetric set intersection
+//! +       Union                // [123] + [345] = [12345]
+//! |       Union                // Same
+//! &       Intersection         // [123] & [345] = [3]
+//! -       Complement           // [123] - [345] = [1]
+//! ^       Symmetric difference // [123] ^ [345] = [1245]
 //! ```
 //!
 //! # Character classes
@@ -79,6 +81,8 @@
 //! regex"
 //! ```
 
+use std::fmt;
+
 #[macro_export]
 macro_rules! matches(
     ($expression: expr, $($pattern:pat)|+) => (
@@ -92,54 +96,121 @@ macro_rules! matches(
     );
 );
 
-#[deriving(Show)]
-pub struct Rule {
-    regex: Vec<CharClass>,
-}
-
 enum Mode {
     Match,
     Scan,
 }
 
-#[deriving(Show)]
-enum CharClass {
-    Char(char),
-    Digit(bool),
-    Dot,
-    Newline(bool),
-    Tab(bool),
-    Whitespace(bool),
-    HWhitespace(bool),
-    Word(bool),
+struct CharSet {
+    chars: String,
+    include: bool,
 }
 
-impl PartialEq<char> for CharClass {
+// Types
+enum Ty {
+    Group(Group),
+    Meta(Meta),
+    Op(Op),
+}
+
+impl fmt::Show for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Ty::Group(ref ty) => write!(f, "{}", ty),
+            Ty::Meta(ref ty)  => write!(f, "{}", ty),
+            Ty::Op(ref ty)    => write!(f, "{}", ty),
+        }
+    }
+}
+
+enum Op {
+    Ellipsis,                  // ..
+    SetDifference,             // -
+    SetSymmetricDifference,    // ^
+    SetIntersection,           // &
+    SetUnion,                  // + or |
+}
+
+impl fmt::Show for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Op::Ellipsis => write!(f, ".."),
+            Op::SetDifference => write!(f, "-"),
+            Op::SetSymmetricDifference => write!(f, "^"),
+            Op::SetIntersection => write!(f, "&"),
+            Op::SetUnion => write!(f, "+"),
+        }
+    }
+}
+
+enum Group {
+//    Capture(Vec<char>),         // ()
+    NonCapture(Vec<Ty>), // []
+    CharClass(Vec<Ty>),  // <[]>
+    Literal(Vec<char>),         // '' or ""
+}
+
+impl fmt::Show for Group {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Group::NonCapture(ref vec) => write!(f, "{}", vec),
+            Group::CharClass(ref vec)  => write!(f, "<{}>", vec),
+            Group::Literal(ref vec)    => write!(f, "{}", vec),
+        }
+    }
+}
+
+// Meta characters are characters which need to be escaped
+// to match themselves. For example: `\.` matches a period.
+// `.` matches anything.
+enum Meta {
+    Char(char),             // a b c etc.
+    Digit(bool),            // \d
+    Dot,                    // .
+    Newline(bool),          // \n
+    Tab(bool),              // \t
+    Whitespace(bool),       // \s
+    HWhitespace(bool),      // \h
+    Word(bool),             // \w
+}
+
+impl fmt::Show for Meta {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Meta::Char(ty) => write!(f, "{}", ty),
+            Meta::Digit(ty) => write!(f, "digit({})", ty),
+            _ => write!(f, "unimplemented"),
+        }
+    }
+}
+
+
+/*impl PartialEq<char> for Meta {
     fn eq(&self, c: &char) -> bool {
         match *self {
-            CharClass::Char(s) => s == *c,
-            CharClass::Digit(digit) => {
+            Meta::Char(s) => s == *c,
+            Meta::Digit(digit) => {
                 let res = matches!(*c, '0' ... '9');
                 if digit { res } else { !res }
             },
-            CharClass::Dot => { true },
-            CharClass::Tab(tab) => {
+            Meta::Dot => { true },
+            Meta::Tab(tab) => {
                 let res = matches!(*c, '\t');
                 if tab { res } else { !res }
             },
-            CharClass::Whitespace(white) => {
+            Meta::Whitespace(white) => {
                 let res = matches!(*c, ' ' | '\t' | '\n');
                 if white { res } else { !res }
             },
-            CharClass::HWhitespace(h_white) => {
+            Meta::HWhitespace(h_white) => {
                 let res = matches!(*c, ' ' | '\t');
                 if h_white { res } else { !res }
             },
-            CharClass::Newline(is) => {
+            Meta::Newline(is) => {
                 let res = matches!(*c, '\n');
                 if is { res } else { !res }
             },
-            CharClass::Word(word) => {
+            Meta::Word(word) => {
                 let res = matches!(*c, 'a' ... 'z' |
                                        'A' ... 'Z' |
                                        '0' ... '9' |
@@ -148,75 +219,145 @@ impl PartialEq<char> for CharClass {
             },
         }
     }
+    
+    fn data(&self) -> CharSet {
+        match *self {
+            Meta::Char(c)     => CharSet { Chars: String::from_char(1, c), Include: true },
+            Meta::Digit(test) => CharSet { Chars: "0123456789".to_string(), Include: test },
+            Meta::Dot         => CharSet { Chars: "".to_string(), Include: false },
+            
+        }
+    }
+}*/
+
+impl Meta {
+    // Push characters between first 2 `'` or `"` sets into Literal.
+    fn literal(open: char, chars: &mut Iterator<char>) -> Ty {
+        let mut vec = vec![];
+        
+        while let Some(c) = chars.next() {
+            match c {
+                _ if c == open => return Ty::Group(Group::Literal(vec)),
+                c => vec.push(c),
+            }
+        }
+
+        // Characters ran out before literal was closed with ' or ".
+		panic!(r"The sets of {} are unbalanced.", open);
+    }
+
+    fn char_class(chars: &mut Iterator<char>) -> Ty {
+        let mut vec = vec![];
+        
+        while let Some(c) = chars.next() {
+            match c {
+                // Ignore whitespace
+                ' ' | '\t' | '\n' => continue,
+
+                // Set operators
+                '-' => vec.push(Ty::Op(Op::SetDifference)),
+                '^' => vec.push(Ty::Op(Op::SetSymmetricDifference)),
+                '&' => vec.push(Ty::Op(Op::SetIntersection)),
+                '+' => vec.push(Ty::Op(Op::SetUnion)),
+                
+                '[' => vec.push(Meta::non_capture(chars)),
+                '>' => return Ty::Group(Group::CharClass(vec)),
+                _   => panic!("`{}` is not valid inside a character class \
+and outside a group.", c),
+            }
+        }
+
+		panic!(r"Missing a `>` char.");
+    }
+
+    fn non_capture(chars: &mut Iterator<char>) -> Ty {
+        let mut vec = vec![];
+        
+        while let Some(c) = chars.next() {
+            match c {
+                // Ignore whitespace
+                ' ' | '\t' | '\n' => continue,
+                
+                'a' ... 'z' | 'A' ... 'Z' | '0' ... '9' | '_'
+                            => vec.push(Ty::Meta(Meta::Char(c))),
+                '.'  | '\\' => vec.push(Meta::single(c, chars)),
+                ']'         => return Ty::Group(Group::NonCapture(vec)),
+                c           => panic!("`{}` is an invalid in this position.", c),
+            }
+        }
+
+		panic!(r"The sets of `]` are unbalanced.");
+    }
+
+    // Multiple characters which represent a single symbol.
+    fn single(open: char, chars: &mut Iterator<char>) -> Ty {
+        match (open, chars.next().expect("Another character is expected.")) {
+            // Default character classes
+            ('\\', 'd') => Ty::Meta(Meta::Digit(true)),
+            ('\\', 'D') => Ty::Meta(Meta::Digit(false)),
+            ('\\', 'n') => Ty::Meta(Meta::Newline(true)),
+            ('\\', 'N') => Ty::Meta(Meta::Newline(false)),
+            ('\\', 't') => Ty::Meta(Meta::Tab(true)),
+            ('\\', 'T') => Ty::Meta(Meta::Tab(false)),
+            ('\\', 's') => Ty::Meta(Meta::Whitespace(true)),
+            ('\\', 'S') => Ty::Meta(Meta::Whitespace(false)),
+            ('\\', 'h') => Ty::Meta(Meta::HWhitespace(true)),
+            ('\\', 'H') => Ty::Meta(Meta::HWhitespace(false)),
+            ('\\', 'w') => Ty::Meta(Meta::Word(true)),
+            ('\\', 'W') => Ty::Meta(Meta::Word(false)),
+            ('\\', c)   => Ty::Meta(Meta::Char(c)),
+            
+            ('.', '.')  => Ty::Op(Op::Ellipsis),
+            (a, b)      => panic!(r"`{}{}` is not a valid sequence.", a, b),
+        }
+    }
+    /*fn simplify(class: &mut Meta) -> Meta {
+        let mut loc = None;
+        for (i, element) in class.iter().enumerate() {
+            match element {
+                Meta::Union => {
+                    loc = Some(i);
+                    break;
+                },
+                _ => {},
+            }
+        }
+        
+        
+        
+        
+    }*/
+}
+
+#[deriving(Show)]
+pub struct Rule {
+    regex: Vec<Ty>,
 }
 
 impl Rule {
     pub fn new(s: &str) -> Result<Rule, &'static str> {
         let mut chars = s.chars();
-        let mut regex: Vec<CharClass> = vec![];
+        let mut regex = vec![];
         
         while let Some(c) = chars.next() {
             match c {
                 'a' ... 'z' | 'A' ... 'Z' | '0' ... '9' | '_'
-                     => regex.push(CharClass::Char(c)),
-                '.'  => regex.push(CharClass::Dot),
-                ' ' | '\t' | '\n' => { continue; },
-                '\\' => {
-                    let char_class = match chars.next() {
-                        Some('d') => CharClass::Digit(true),
-                        Some('D') => CharClass::Digit(false),
-                        Some('h') => CharClass::HWhitespace(true),
-                        Some('H') => CharClass::HWhitespace(false),
-                        Some('n') => CharClass::Newline(true),
-                        Some('N') => CharClass::Newline(false),
-                        Some('s') => CharClass::Whitespace(true),
-                        Some('S') => CharClass::Whitespace(false),
-                        Some('t') => CharClass::Tab(true),
-                        Some('T') => CharClass::Tab(false),
-                        Some('w') => CharClass::Word(true),
-                        Some('W') => CharClass::Word(false),
-                        Some(c)   => CharClass::Char(c),
-                        None => { return Err(r"Last character (`\`) is invalid") },
-                    };
-                    
-                    regex.push(char_class);
-                },
-                '\'' => {
-                	let mut closed = false;
-                    while let Some(c) = chars.next() {
-                        match c {
-                            '\'' => {
-                            	closed = true;
-                            	break;
-                        	}
-                            c => regex.push(CharClass::Char(c)),
-                        }
-                    }
-
-					if !closed { return Err(r"The sets of `'` are unbalanced.") }
-                },
-                '"' => {
-                	let mut closed = false;
-                    while let Some(c) = chars.next() {
-                        match c {
-                            '"' => {
-                            	closed = true;
-                            	break;
-                        	}
-                            c => regex.push(CharClass::Char(c)),
-                        }
-                    }
-
-                    if !closed { return Err(r#"The sets of `"` are unbalanced."#) }
-                },
-                _ => { continue; },
+                           => regex.push(Ty::Meta(Meta::Char(c))),
+                '.'        => regex.push(Ty::Meta(Meta::Dot)),
+                ' ' | '\t' | '\n' => continue,
+                '\\'       => regex.push(Meta::single(c, &mut chars)),
+                '\'' | '"' => regex.push(Meta::literal(c, &mut chars)),
+                '<'        => regex.push(Meta::char_class(&mut chars)),
+                '['        => regex.push(Meta::non_capture(&mut chars)),
+                _          => continue,
             }
         }
-        
+        println!("regex: {}", regex[0]);
+        //Meta::simplify(&mut vec[0]);
         Ok(Rule { regex: regex })
     }
     
-    pub fn is_match(self, s: &str) -> bool {
+    /*pub fn is_match(self, s: &str) -> bool {
         let mut chars = s.chars();
         let mut mode = Mode::Scan;
         
@@ -259,6 +400,6 @@ impl Rule {
                 },
             };
         };
-    }
+    }*/
 }
 
