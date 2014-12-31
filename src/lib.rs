@@ -103,7 +103,26 @@ enum Mode {
 
 struct CharSet {
     chars: String,
+    // If true include the exact contents. Otherwise, include
+    // everything *not* inside `chars`.
     include: bool,
+}
+
+impl CharSet {
+    fn new(meta: Meta) -> CharSet {
+        match meta {
+            Meta::Char(c)           => CharSet { chars: String::from_char(1, c), include: true },
+            Meta::Digit(test)       => CharSet { chars: "0123456789".to_string(), include: test },
+            Meta::Dot               => CharSet { chars: "".to_string(), include: false },
+            Meta::Newline(test)     => CharSet { chars: "\n".to_string(), include: test },
+            Meta::Tab(test)         => CharSet { chars: "\t".to_string(), include: test },
+            Meta::Whitespace(test)  => CharSet { chars: " \t\n".to_string(), include: test },
+            Meta::HWhitespace(test) => CharSet { chars: " \t".to_string(), include: test },
+            Meta::Word(test)        => CharSet { chars:
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".to_string(),
+                include: test },
+        }
+    }
 }
 
 // Types
@@ -185,7 +204,7 @@ impl fmt::Show for Meta {
 }
 
 
-/*impl PartialEq<char> for Meta {
+impl PartialEq<char> for Meta {
     fn eq(&self, c: &char) -> bool {
         match *self {
             Meta::Char(s) => s == *c,
@@ -220,15 +239,8 @@ impl fmt::Show for Meta {
         }
     }
     
-    fn data(&self) -> CharSet {
-        match *self {
-            Meta::Char(c)     => CharSet { Chars: String::from_char(1, c), Include: true },
-            Meta::Digit(test) => CharSet { Chars: "0123456789".to_string(), Include: test },
-            Meta::Dot         => CharSet { Chars: "".to_string(), Include: false },
-            
-        }
-    }
-}*/
+
+}
 
 impl Meta {
     // Push characters between first 2 `'` or `"` sets into Literal.
@@ -401,5 +413,43 @@ impl Rule {
             };
         };
     }*/
+}
+
+#[cfg(test)]
+mod test {
+    use super::{CharSet, Meta};
+    
+    #[test]
+    fn charset_alphanumerics_is_accurate() {
+        
+        let CharSet { chars: digits, .. }   = CharSet::new(Meta::Digit(true));
+        let CharSet { chars: alphabet, .. } = CharSet::new(Meta::Word(true));
+        
+        let mut new_alphabet = vec![];
+        let mut new_digits   = vec![];
+        
+        for i in range(97, 123u8) { // a-z
+            new_alphabet.push(i as char);
+        }
+        for i in range(65, 91u8) {  // A-Z
+            new_alphabet.push(i as char);
+        }
+        for i in range(48, 58u8) {  // 0-9
+            new_alphabet.push(i as char);
+            new_digits.push(i as char);
+        }
+        
+        new_alphabet.push(95u8 as char);   // _
+
+        // Check that typed alphabet is the same as computed
+        for (a1, a2) in alphabet.chars().zip(new_alphabet.iter()) {
+            assert_eq!(a1, *a2);
+        }
+
+        // Check that typed digits are the same as computed
+        for (d1, d2) in digits.chars().zip(new_digits.iter()) {
+            assert_eq!(d1, *d2);
+        }
+    }
 }
 
