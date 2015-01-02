@@ -132,16 +132,6 @@ enum Ty {
     Op(Op),
 }
 
-impl fmt::Show for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Ty::Group(ref ty) => write!(f, "{}", ty),
-            Ty::Meta(ref ty)  => write!(f, "{}", ty),
-            Ty::Op(ref ty)    => write!(f, "{}", ty),
-        }
-    }
-}
-
 enum Op {
     Ellipsis,                  // ..
     SetDifference,             // -
@@ -150,33 +140,11 @@ enum Op {
     SetUnion,                  // + or |
 }
 
-impl fmt::Show for Op {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Op::Ellipsis => write!(f, ".."),
-            Op::SetDifference => write!(f, "-"),
-            Op::SetSymmetricDifference => write!(f, "^"),
-            Op::SetIntersection => write!(f, "&"),
-            Op::SetUnion => write!(f, "+"),
-        }
-    }
-}
-
 enum Group {
 //    Capture(Vec<char>),         // ()
     NonCapture(Vec<Ty>), // []
     CharClass(Vec<Ty>),  // <[]>
     Literal(Vec<char>),         // '' or ""
-}
-
-impl fmt::Show for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Group::NonCapture(ref vec) => write!(f, "{}", vec),
-            Group::CharClass(ref vec)  => write!(f, "<{}>", vec),
-            Group::Literal(ref vec)    => write!(f, "{}", vec),
-        }
-    }
 }
 
 // Meta characters are characters which need to be escaped
@@ -192,17 +160,6 @@ enum Meta {
     HWhitespace(bool),      // \h
     Word(bool),             // \w
 }
-
-impl fmt::Show for Meta {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Meta::Char(ty) => write!(f, "{}", ty),
-            Meta::Digit(ty) => write!(f, "digit({})", ty),
-            _ => write!(f, "unimplemented"),
-        }
-    }
-}
-
 
 impl PartialEq<char> for Meta {
     fn eq(&self, c: &char) -> bool {
