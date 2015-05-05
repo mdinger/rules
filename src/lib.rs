@@ -12,7 +12,7 @@
 //! Currently, this is designed for ASCII and may not behave properly
 //! with Unicode.
 //!
-//! Whitespace is generally ignored to so that a regex can be more readable
+//! Whitespace is generally ignored so that a regex can be more readable
 //! and less dense.
 //!
 //! ```plain
@@ -66,7 +66,7 @@
 //! <[0-9] - [13579]> // Matches an even number
 //! <\d - [13579]>    // Same
 //! <[0-6] ^ [5-9]>   // Matches a `5` or `6`
-//! <[-0-6]>          // Negation: anything but 0-6
+//! <-[0-6]>          // Negation: anything but 0-6
 //! ```
 //!
 //! # Comments

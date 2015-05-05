@@ -8,3 +8,5 @@ was supposed to break anything while ignoring backwards compatibility. Thus, the
 
 A straightforward intro to Perl 6 rules is found
 [here](https://github.com/perlpilot/perl6-docs/blob/master/intro/p6-regex-intro.pod).
+
+The main reference to [Perl 6 regex documentation](http://doc.perl6.org/language/regexes).
