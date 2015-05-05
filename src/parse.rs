@@ -365,7 +365,6 @@ mod test {
     fn text() {
         assert_eq!(vec![Char('f'), Char('r'), Char('e'), Char('d')], parse(r"fred"));
         assert_eq!(vec![Char('t'), Char('_'), Char('d')], parse(r"t_d"));
-        assert_eq!(vec![Char('f'), Char('r'), Char('e'), Char('d')], parse(r" f r e d "));
     }
     #[test]
     fn ignore_whitespace() {
