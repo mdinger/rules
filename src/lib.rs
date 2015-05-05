@@ -22,6 +22,23 @@
 //! r"apples . oranges"
 //! ```
 //!
+//! # Literals
+//!
+//! Alphanumerics, underscores (`_`), and everything enclosed within
+//! quotes (`"`) and ticks (`'`) are the only literals.
+//!
+//! ```plain
+//! hello_world   // Matches `hello_world`.
+//! "carrot cake" // Matches `carrot cake`.
+//! 'apple pie'   // Matches `apple pie`.
+//! ```
+//!
+//! Everything else must be escaped with a backslash (`\*`) to literally match.
+//!
+//! ```plain
+//! it\'s\ my\ birthday // Matches `it's my birthday`.
+//! ```
+//!
 //! # Set operators
 //!
 //! These operators can be applied to groups which will be analyzed later:
