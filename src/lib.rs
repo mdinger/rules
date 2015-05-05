@@ -1,4 +1,3 @@
-#![feature(unicode)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
@@ -80,8 +79,8 @@
 //! regex"
 //! ```
 
-extern crate unicode;
 
 pub mod parse;
 pub mod re;
+mod unicode;
 

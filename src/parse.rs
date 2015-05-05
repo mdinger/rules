@@ -1,6 +1,6 @@
 use parse::Membership::*;
 use parse::Faction::*;
-use std::collections::{BTreeSet, RingBuf};
+use std::collections::{BTreeSet, VecDeque};
 // Unicode tables for character classes are defined in libunicode
 use unicode::regex::{PERLD, PERLS, PERLW};
 
@@ -76,7 +76,7 @@ pub enum Op {
 }
 
 /*impl Op {
-    fn difference(class: &mut RingBuf<Ast>) {
+    fn difference(class: &mut VecDeque<Ast>) {
         // `class[1]` is the op which called this function.
         let difference = match (class[0], class[2]) {
             (Ast::Empty, group) => group.negate(),
@@ -98,7 +98,7 @@ pub enum Faction {
 pub enum Ast {
     Empty,
     Char(char),                     // abc123
-    Class(RingBuf<Ast>),            // <[135] + [68\w]>
+    Class(VecDeque<Ast>),            // <[135] + [68\w]>
     Dot,                            // .
     Group(Vec<Ast>, Faction),       // [123] or (123) outside a `<>`
     Literal(Vec<char>),             // `'hello'` or `"hello"`
@@ -185,7 +185,7 @@ impl Parser {
     fn parse_class(&mut self) -> Ast {
         // Classes will need to be merged later which requires collapsing from the
         // front so I'm using a deque (`<[abc] + [cde]>` collapses to `<[a...e]>`).
-        let mut buffer = RingBuf::new();
+        let mut buffer = VecDeque::new();
         let mut closed = false; // Deliminator hasn't been closed yet.
 
         while self.next() {
@@ -338,22 +338,22 @@ impl Parser {
 
 // See if unicode container contains character `c`
 fn contains(container: &'static [(char, char)], c: char) -> bool {
-    for &(open, close) in container[].iter() {
+    for &(open, close) in container {
         if open <= c && c <= close { return true; }
     }
 
     false
 }
 fn is_alphanumeric(c: char) -> bool {
-    contains(*PERLD, c) || contains(PERLW, c)
+    contains(PERLD, c) || contains(PERLW, c)
 }
 fn is_whitespace(c: char) -> bool {
-    contains(*PERLS, c)
+    contains(PERLS, c)
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::RingBuf;
+    use std::collections::VecDeque;
     use unicode::regex::PERLS;
     use super::Ast;
     use super::Ast::*;
@@ -363,8 +363,8 @@ mod test {
     use super::Table;
     use super::CharSet;
 
-    fn new_buf(vec: Vec<Ast>) -> RingBuf<Ast> {
-        let buffer: RingBuf<Ast> = vec.into_iter().collect();
+    fn new_buf(vec: Vec<Ast>) -> VecDeque<Ast> {
+        let buffer: VecDeque<Ast> = vec.into_iter().collect();
 
         buffer
     }
