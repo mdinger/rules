@@ -134,38 +134,34 @@ impl Parser {
     }
     fn parse(&mut self) -> Vec<Ast> {
         let mut vec = vec![];
-        let mut first = true;
 
         if self.chars.len() == 0 { panic!("An empty regex is not allowed.") }
 
         loop {
-            if first { first = false; }
-            else if !self.next() { break; } 
             let c = self.cur();
 
-            if is_whitespace(c) { continue }
-            else if is_alphanumeric(c) {
-                vec.push(Ast::Char(c));
-                continue;
+            if is_alphanumeric(c) { vec.push(Ast::Char(c)) }
+            else if !is_whitespace(c) {
+                match c {
+                    '\\' => {
+                        let ast = self.parse_escape();
+                        vec.push(ast);
+                    },
+                    '\'' | '"' => {
+                        let ast = self.parse_literal();
+                        vec.push(ast);
+                    },
+                    '<' => {
+                        let ast = self.parse_class();
+                        vec.push(ast);
+                    },
+                    '.' => vec.push(Ast::Dot),
+                    _ => panic!("`{:?}` is not valid here.", c),
+                }
             }
 
-            match c {
-                '\\' => {
-                    let ast = self.parse_escape();
-                    vec.push(ast);
-                },
-                '\'' | '"' => {
-                    let ast = self.parse_literal();
-                    vec.push(ast);
-                },
-                '<' => {
-                    let ast = self.parse_class();
-                    vec.push(ast);
-                },
-                '.' => vec.push(Ast::Dot),
-                _ => panic!("`{:?}` is not valid here.", c),
-            }
-        };
+            if !self.next() { break }
+        }
 
         vec
     }
