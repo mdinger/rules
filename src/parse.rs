@@ -22,18 +22,6 @@ impl Table for &'static [(char, char)] {
     }
 }
 
-impl Table for &'static &'static [(char, char)] {
-    fn to_char_set(&self) -> CharSet {
-        let mut set = BTreeSet::new();
-
-        for &(open, close) in self.iter() {
-            set.insert(Ast::Range(open, close));
-        }
-
-        set
-    }
-}
-
 enum Unicode {
     Digit,
     Whitespace,
