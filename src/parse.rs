@@ -93,7 +93,7 @@ pub enum Op {
     }
 }*/
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Faction {
     Capture,
     NonCapture,
@@ -104,7 +104,7 @@ pub enum Faction {
 pub enum Ast {
     Empty,
     Char(char),                     // abc123
-    Class(VecDeque<Ast>),            // <[135] + [68\w]>
+    Class(VecDeque<Ast>),           // <[135] + [68\w]>
     Dot,                            // .
     Group(Vec<Ast>, Faction),       // [123] or (123) outside a `<>`
     Literal(Vec<char>),             // `'hello'` or `"hello"`
@@ -113,7 +113,7 @@ pub enum Ast {
     // more efficient than specifying every character. A set may include a
     // few dozen pairs instead of 100s/1000s.
     Range(char, char),              // (open, close) range for character sets
-    Set(CharSet, Membership),      // [1..5] or [68\w] inside a `<>`
+    Set(CharSet, Membership),       // [1..5] or [68\w] inside a `<>`
 }
 
 impl Ast {
@@ -181,7 +181,7 @@ impl Parser {
     fn parse_class(&mut self) -> Ast {
         // Classes will need to be merged later which requires collapsing from the
         // front so I'm using a deque (`<[abc] + [cde]>` collapses to `<[a...e]>`).
-        let mut buffer = VecDeque::new();
+        let mut deque = VecDeque::new();
         let mut closed = false; // Deliminator hasn't been closed yet.
 
         while self.next() {
@@ -190,11 +190,11 @@ impl Parser {
             if is_whitespace(c) { continue; }
 
             match c {
-                '-' => buffer.push_back(Ast::Op(Op::Difference)),
-                '^' => buffer.push_back(Ast::Op(Op::SymmetricDifference)),
-                '&' => buffer.push_back(Ast::Op(Op::Intersection)),
-                '+' | '|' => buffer.push_back(Ast::Op(Op::Union)),
-                '[' => buffer.push_back(self.parse_class_set()),
+                '-' => deque.push_back(Ast::Op(Op::Difference)),
+                '^' => deque.push_back(Ast::Op(Op::SymmetricDifference)),
+                '&' => deque.push_back(Ast::Op(Op::Intersection)),
+                '+' | '|' => deque.push_back(Ast::Op(Op::Union)),
+                '[' => deque.push_back(self.parse_class_set()),
                 '>' => {
                     closed = true;
                     break;
@@ -206,24 +206,24 @@ impl Parser {
         if !closed { panic!("A `<` must have a closing `>`."); }
 
         // Insert `Empty` in front if first character is a binary op.
-        match buffer[0] {
+        match deque[0] {
             Ast::Op(Op::Difference) |
             Ast::Op(Op::SymmetricDifference) |
             Ast::Op(Op::Intersection) |
-            Ast::Op(Op::Union) => buffer.push_front(Ast::Empty),
+            Ast::Op(Op::Union) => deque.push_front(Ast::Empty),
             _ => {},
         }
 
         // Insert `Empty` in back if last character is a binary op.
-        match buffer[buffer.len()-1] {
+        match deque[deque.len()-1] {
             Ast::Op(Op::Difference) |
             Ast::Op(Op::SymmetricDifference) |
             Ast::Op(Op::Intersection) |
-            Ast::Op(Op::Union) => buffer.push_back(Ast::Empty),
+            Ast::Op(Op::Union) => deque.push_back(Ast::Empty),
             _ => {},
         }
 
-        Ast::Class(buffer)
+        Ast::Class(deque)
     }
     // Inside a `<>`, parse the `[123 a]` or `[4 \d]`. Assume `[` is the first char.
     fn parse_class_set(&mut self) -> Ast {
@@ -281,7 +281,7 @@ impl Parser {
     // Parse the `\w`, `\d`, ... types
     fn parse_escape(&mut self) -> Ast {
         if !self.next() { panic!("A `\\` must be followed by another char."); }
-        
+
         match self.cur() {
             'd' => Ast::Set(PERLD.to_char_set(), Inclusive),
             'D' => Ast::Set(PERLD.to_char_set(), Exclusive),
@@ -358,10 +358,10 @@ mod test {
     use super::Op::*;
     use super::ToCharSet;
 
-    fn new_buf(vec: Vec<Ast>) -> VecDeque<Ast> {
-        let buffer: VecDeque<Ast> = vec.into_iter().collect();
+    fn new_deque(vec: Vec<Ast>) -> VecDeque<Ast> {
+        let deque: VecDeque<Ast> = vec.into_iter().collect();
 
-        buffer
+        deque
     }
 
     #[test]
@@ -393,56 +393,56 @@ mod test {
     #[test]
     fn char_class() {
         // Set of chars inside `[]`
-        let set = new_set(vec![Char('a'), Char('b'), Char('c')]);
-        // Buffer of ops and sets inside `<>`
-        let buf = new_buf(vec![Set(set, Inclusive)]);
+        let set = vec![Char('a'), Char('b'), Char('c')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque = new_deque(vec![Set(set, Inclusive)]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf)], parse(r"< [ abc ] >"));
+        assert_eq!(vec![Class(deque)], parse(r"< [ abc ] >"));
     }
     #[test]
     fn char_class_with_ops() {
         // Set of chars inside `[]`
-        let set_a = new_set(vec![Char('a')]);
-        let set_b = new_set(vec![Char('b')]);
-        // Buffer of ops and sets inside `<>`
-        let buf = new_buf(vec![Set(set_a, Inclusive),
-                               Op(Union),
-                               Set(set_b, Inclusive)]);
+        let set_a = vec![Char('a')].to_char_set();
+        let set_b = vec![Char('b')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque = new_deque(vec![Set(set_a, Inclusive),
+                                   Op(Union),
+                                   Set(set_b, Inclusive)]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf)], parse(r"< [ a ] + [ b ] >"));
+        assert_eq!(vec![Class(deque)], parse(r"< [ a ] + [ b ] >"));
     }
     #[test]
     fn char_class_pre_op() {
         // Set of chars inside `[]`
-        let set = new_set(vec![Char('a')]);
-        // Buffer of ops and sets inside `<>`. Pre-ops get an `Empty`
+        let set = vec![Char('a')].to_char_set();
+        // Deque of ops and sets inside `<>`. Pre-ops get an `Empty`
         // prepended so binary ops can be applied to them.
-        let buf = new_buf(vec![Empty,
-                               Op(Difference),
-                               Set(set, Inclusive)]);
+        let deque = new_deque(vec![Empty,
+                                   Op(Difference),
+                                   Set(set, Inclusive)]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf)], parse(r"< - [ a ] >"));
+        assert_eq!(vec![Class(deque)], parse(r"< - [ a ] >"));
     }
     #[test]
     fn char_class_post_op() {
         // Set of chars inside `[]`
-        let set = new_set(vec![Char('a')]);
-        // Buffer of ops and sets inside `<>`. Post-ops get an `Empty`
+        let set = vec![Char('a')].to_char_set();
+        // Deque of ops and sets inside `<>`. Post-ops get an `Empty`
         // appended so binary ops can be applied to them.
-        let buf = new_buf(vec![Set(set, Inclusive),
-                               Op(Union),
-                               Empty]);
+        let deque = new_deque(vec![Set(set, Inclusive),
+                                   Op(Union),
+                                   Empty]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf)], parse(r"< [ a ] + >"));
+        assert_eq!(vec![Class(deque)], parse(r"< [ a ] + >"));
     }
     #[test]
     fn char_class_ellipsis() {
         // Set of chars inside `[]`
-        let set = new_set(vec![Range('a','d')]);
-        // Buffer of ops and sets inside `<>`.
-        let buf = new_buf(vec![Set(set, Inclusive)]);
+        let set = vec![Range('a','d')].to_char_set();
+        // Deque of ops and sets inside `<>`.
+        let deque = new_deque(vec![Set(set, Inclusive)]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf)], parse(r"< [ a .. d ] >"));
+        assert_eq!(vec![Class(deque)], parse(r"< [ a .. d ] >"));
     }
     #[test]
     fn char_class_escape_chars() {
@@ -450,41 +450,41 @@ mod test {
         // Escaped character sets may be inclusive or exclusive and need to
         // keep their own parameters. So they are stored whole inside the outer
         // set to eventually be flattened into a single set after parsing.
-        let set1 = new_set(vec![Set(PERLS.to_char_set(), Inclusive)]);
-        // Buffer of ops and sets inside `<>`.
-        let buf1 = new_buf(vec![Set(set1, Inclusive)]);
-        assert_eq!(vec![Class(buf1)], parse(r"< [ \s ] >"));
+        let set1 = vec![Set(PERLS.to_char_set(), Inclusive)].to_char_set();
+        // Deque of ops and sets inside `<>`.
+        let deque1 = new_deque(vec![Set(set1, Inclusive)]);
+        assert_eq!(vec![Class(deque1)], parse(r"< [ \s ] >"));
 
         // Without the superset, these 2 would merge so they are stored whole
         // until later.
-        let set2 = new_set(vec![Set(PERLS.to_char_set(), Inclusive),
-                                Set(PERLS.to_char_set(), Exclusive)]);
-        // Buffer of ops and sets inside `<>`.
-        let buf2 = new_buf(vec![Set(set2, Inclusive)]);
+        let set2 = vec![Set(PERLS.to_char_set(), Inclusive),
+                        Set(PERLS.to_char_set(), Exclusive)].to_char_set();
+        // Deque of ops and sets inside `<>`.
+        let deque2 = new_deque(vec![Set(set2, Inclusive)]);
         // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(buf2)], parse(r"< [ \s \S ] >"));
+        assert_eq!(vec![Class(deque2)], parse(r"< [ \s \S ] >"));
     }
     #[test]
     fn char_class_unicode() {
         // Set of chars inside `[]`
-        let set = new_set(vec![Char('a'), Char('こ')]);
-        // Buffer of ops and sets inside `<>`.
-        let buf = new_buf(vec![Set(set, Inclusive)]);
-        assert_eq!(vec![Class(buf)], parse(r"< [ a こ ] >"));
+        let set = vec![Char('a'), Char('こ')].to_char_set();
+        // Deque of ops and sets inside `<>`.
+        let deque = new_deque(vec![Set(set, Inclusive)]);
+        assert_eq!(vec![Class(deque)], parse(r"< [ a こ ] >"));
     }
     #[test]
     fn multi_char_class() {
         // Set of chars inside `[]`
-        let set_a = new_set(vec![Char('a')]);
-        let set_c = new_set(vec![Char('c')]);
+        let set_a = vec![Char('a')].to_char_set();
+        let set_c = vec![Char('c')].to_char_set();
 
-        // Buffer of ops and sets inside `<>`
-        let buf_a = new_buf(vec![Set(set_a, Inclusive)]);
-        let buf_c = new_buf(vec![Set(set_c, Inclusive)]);
+        // Deque of ops and sets inside `<>`
+        let deque_a = new_deque(vec![Set(set_a, Inclusive)]);
+        let deque_c = new_deque(vec![Set(set_c, Inclusive)]);
 
         // Multiple character classes
-        assert_eq!(vec![Class(buf_a),
+        assert_eq!(vec![Class(deque_a),
                         Char('b'),
-                        Class(buf_c)], parse(r"<[ a ]> b <[ c ]>"));
+                        Class(deque_c)], parse(r"<[ a ]> b <[ c ]>"));
     }
 }
