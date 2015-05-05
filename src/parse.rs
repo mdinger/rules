@@ -6,17 +6,35 @@ use unicode::regex::{PERLD, PERLS, PERLW};
 
 pub type CharSet = BTreeSet<Ast>;
 
-trait Table {
+trait ToCharSet {
     fn to_char_set(&self) -> CharSet;
 }
 
-impl Table for &'static [(char, char)] {
+impl ToCharSet for &'static [(char, char)] {
     fn to_char_set(&self) -> CharSet {
         let mut set = BTreeSet::new();
 
-        for &(open, close) in self.iter() {
+        for &(open, close) in *self {
             set.insert(Ast::Range(open, close));
         }
+
+        set
+    }
+}
+
+impl ToCharSet for char {
+    fn to_char_set(&self) -> CharSet {
+        let mut set = BTreeSet::new();
+        set.insert(Ast::Char(*self));
+
+        set
+    }
+}
+
+impl ToCharSet for Vec<Ast> {
+    fn to_char_set(&self) -> CharSet {
+        let vec = (*self).clone();
+        let set: CharSet = vec.into_iter().collect();
 
         set
     }
@@ -105,12 +123,6 @@ impl Ast {
             ast => panic!("Negating `{:?}` is invalid.", ast),
         };
     }*/
-    fn to_char_set(c: char) -> CharSet {
-        let mut set = BTreeSet::new();
-        set.insert(Ast::Char(c));
-
-        set
-    }
 }
 
 pub fn parse(s: &str) -> Vec<Ast> {
@@ -273,15 +285,15 @@ impl Parser {
         match self.cur() {
             'd' => Ast::Set(PERLD.to_char_set(), Inclusive),
             'D' => Ast::Set(PERLD.to_char_set(), Exclusive),
-            'n' => Ast::Set(Ast::to_char_set('\n'), Inclusive),
-            'N' => Ast::Set(Ast::to_char_set('\n'), Exclusive),
-            't' => Ast::Set(Ast::to_char_set('\t'), Inclusive),
-            'T' => Ast::Set(Ast::to_char_set('\t'), Exclusive),
+            'n' => Ast::Set('\n'.to_char_set(), Inclusive),
+            'N' => Ast::Set('\n'.to_char_set(), Exclusive),
+            't' => Ast::Set('\t'.to_char_set(), Inclusive),
+            'T' => Ast::Set('\t'.to_char_set(), Exclusive),
             's' => Ast::Set(PERLS.to_char_set(), Inclusive),
             'S' => Ast::Set(PERLS.to_char_set(), Exclusive),
             'w' => Ast::Set(PERLW.to_char_set(), Inclusive),
             'W' => Ast::Set(PERLW.to_char_set(), Exclusive),
-            c   => Ast::Set(Ast::to_char_set(c), Inclusive),
+            c   => Ast::Set(c.to_char_set(), Inclusive),
         }
     }
     // Parse the `'hello world'` and `"testing_this"`
@@ -344,19 +356,14 @@ mod test {
     use super::parse;
     use super::Membership::*;
     use super::Op::*;
-    use super::Table;
-    use super::CharSet;
+    use super::ToCharSet;
 
     fn new_buf(vec: Vec<Ast>) -> VecDeque<Ast> {
         let buffer: VecDeque<Ast> = vec.into_iter().collect();
 
         buffer
     }
-    fn new_set(vec: Vec<Ast>) -> CharSet {
-        let set: CharSet = vec.into_iter().collect();
 
-        set
-    }
     #[test]
     fn text() {
         assert_eq!(vec![Char('f'), Char('r'), Char('e'), Char('d')], parse(r"fred"));
