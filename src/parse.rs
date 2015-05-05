@@ -154,22 +154,13 @@ impl Parser {
 
             if is_alphanumeric(c) { vec.push(Ast::Char(c)) }
             else if !is_whitespace(c) {
-                match c {
-                    '\\' => {
-                        let ast = self.parse_escape();
-                        vec.push(ast);
-                    },
-                    '\'' | '"' => {
-                        let ast = self.parse_literal();
-                        vec.push(ast);
-                    },
-                    '<' => {
-                        let ast = self.parse_class();
-                        vec.push(ast);
-                    },
-                    '.' => vec.push(Ast::Dot),
-                    _ => panic!("`{:?}` is not valid here.", c),
-                }
+                vec.push(match c {
+                    '\\'       => self.parse_escape(),
+                    '\'' | '"' => self.parse_literal(),
+                    '<'        => self.parse_class(),
+                    '.'        => Ast::Dot,
+                    _          => panic!("`{}` is not valid here.", c),
+                });
             }
 
             if !self.next() { break }
