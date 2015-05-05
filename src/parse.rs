@@ -178,19 +178,18 @@ impl Parser {
         while self.next() {
             let c = self.cur();
 
-            if is_whitespace(c) { continue; }
-
-            match c {
-                '-' => deque.push_back(Ast::Op(Op::Difference)),
-                '^' => deque.push_back(Ast::Op(Op::SymmetricDifference)),
-                '&' => deque.push_back(Ast::Op(Op::Intersection)),
-                '+' | '|' => deque.push_back(Ast::Op(Op::Union)),
-                '[' => deque.push_back(self.parse_class_set()),
-                '>' => {
-                    closed = true;
-                    break;
-                },
-                _   => panic!("`{:?}` is invalid inside `<>` and outside `[]`.", c),
+            if c == '>' {
+                closed = true;
+                break;
+            } else if !is_whitespace(c) {
+                deque.push_back(match c {
+                    '-'       => Ast::Op(Op::Difference),
+                    '^'       => Ast::Op(Op::SymmetricDifference),
+                    '&'       => Ast::Op(Op::Intersection),
+                    '+' | '|' => Ast::Op(Op::Union),
+                    '['       => self.parse_class_set(),
+                    _         => panic!("`{:?}` is invalid inside `<>` and outside `[]`.", c),
+                });
             }
         }
 
