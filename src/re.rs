@@ -1,4 +1,5 @@
 use parse::{self, Ast};//, Membership, Op};
+use collapse;
 //use std::collections::RingBuf;
 
 struct Regex {
@@ -9,6 +10,8 @@ struct Regex {
 impl Regex {
     pub fn new(s: &str) {
         let vec = parse::parse(s);
+        collapse::collapse(vec);
+        
         
         //self.simplify(&mut vec)
     }

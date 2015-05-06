@@ -6,7 +6,7 @@ use unicode::regex::{PERLD, PERLS, PERLW};
 
 pub type CharSet = BTreeSet<Ast>;
 
-trait ToCharSet {
+pub trait ToCharSet {
     fn to_char_set(&self) -> CharSet;
 }
 

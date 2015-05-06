@@ -96,7 +96,7 @@
 //! regex"
 //! ```
 
-
+pub mod collapse;
 pub mod parse;
 pub mod re;
 mod unicode;

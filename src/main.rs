@@ -5,27 +5,16 @@
 extern crate rules;
 
 use rules::parse;
+use rules::collapse;
 
-fn test_parse(regex: &str) {
-    let vec = parse::parse(regex);
-    
-    println!("Ast:\n{:?}", vec);
-}
-/*
-use rules::Rule;
+fn test_collapse(regex: &str) {
+    let parsed = parse::parse(regex);
+    println!("Parsed:\n{:?}", &parsed);
 
-fn test_match(regex: &str, s: &str) {
-    let rule = match Rule::new(regex) {
-        Ok(rule) => rule,
-        Err(err) => panic!("{}", err),
-    };
-    
-    //assert_eq!(rule.is_match(s), true);
+    let collapsed = collapse::collapse(parsed);
+    println!("Collapsed:\n{:?}", &collapsed);
 }
-*/
-// Matches `a` or `b` or `c`
-// <[ a b c ]>
 
 fn main() {
-    test_parse(r"< - [ fred ] >");
+    test_collapse(r" ab ");
 }
