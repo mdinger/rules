@@ -260,9 +260,7 @@ impl Parser {
     fn parse_ellipsis(&mut self, a: char) -> Ast {
         while self.next() {
             let b = self.cur();
-            if is_whitespace(b) { continue; }
-
-            return Ast::Range(a, b);
+            if !is_whitespace(b) { return Ast::Range(a, b) }
         }
 
         panic!("An `..` must be followed by another char.");
