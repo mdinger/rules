@@ -311,11 +311,11 @@ impl Parser {
     }
     // True if prev finds another char.
     fn prev(&mut self) -> bool {
-        if self.pos == 0 { return false }
+        if self.pos == 0 { false } else {
+            self.pos -= 1;
 
-        self.pos -= 1;
-
-        true
+            true
+        }
     }
 }
 
