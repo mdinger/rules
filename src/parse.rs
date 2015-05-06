@@ -223,31 +223,30 @@ impl Parser {
         let mut vec = vec![];
         let mut closed = false; // Deliminator hasn't been closed yet.
 
-        while self.next() {
+        while !closed && self.next() {
             let c = self.cur();
-            if is_whitespace(c) { continue; }
 
-            match c {
-                '\\' => vec.push(self.parse_escape()),
-                ']'  => {
-                    closed = true;
-                    break;
-                },
-                '.' => {
-                    if self.peek('.') {
-                        self.next(); // Advance to second `.`
-                        // Pull off the last `Ast` before the `..`
-                        let before = match vec.pop() {
-                            Some(Ast::Char(c)) => c,
-                            Some(_) => panic!("`..` only operate on characters."),
-                            None => panic!("`..` cannot be the first element in a character class."),
-                        };
+            if c == ']' { closed = true } else if !is_whitespace(c) {
+                let ast = match c {
+                    '\\' => self.parse_escape(),
+                    '.'  => {
+                        if self.peek('.') {
+                            self.next(); // Advance to second `.`
+                            // Pull off the last `Ast` before the `..`
+                            let before = match vec.pop() {
+                                Some(Ast::Char(c)) => c,
+                                Some(_) => panic!("`..` only operate on characters."),
+                                None => panic!("`..` cannot be the first element in a character class."),
+                            };
 
-                        vec.push(self.parse_ellipsis(before));
-                    } else { vec.push(Ast::Char(c)) }
-                },
-                c => vec.push(Ast::Char(c)),
-            };
+                            self.parse_ellipsis(before)
+                        } else { Ast::Char(c) }
+                    },
+                    c    => Ast::Char(c),
+                };
+
+                vec.push(ast);
+            }
         }
 
         if !closed { panic!("A `[` must have a closing `]`.") }
