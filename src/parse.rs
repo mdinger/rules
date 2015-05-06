@@ -321,11 +321,7 @@ impl Parser {
 
 // See if unicode container contains character `c`
 fn contains(container: &'static [(char, char)], c: char) -> bool {
-    for &(open, close) in container {
-        if open <= c && c <= close { return true; }
-    }
-
-    false
+    container.iter().any(|&(open, close)| open <= c && c <= close )
 }
 fn is_alphanumeric(c: char) -> bool {
     contains(PERLD, c) || contains(PERLW, c)
