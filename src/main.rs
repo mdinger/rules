@@ -16,5 +16,5 @@ fn test_collapse(regex: &str) {
 }
 
 fn main() {
-    test_collapse(r" ab ");
+    test_collapse(r" ab<[..]> ");
 }

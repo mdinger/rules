@@ -1,10 +1,62 @@
 use parse::Membership::*;
 use parse::Faction::*;
 use std::collections::{BTreeSet, VecDeque};
+use std::fmt;
+use std::result;
 // Unicode tables for character classes are defined in libunicode
 use unicode::regex::{PERLD, PERLS, PERLW};
 
 pub type CharSet = BTreeSet<Ast>;
+type Result<T> = result::Result<T, ParseError>;
+
+#[derive(Debug)]
+enum ParseError {
+    ClassInvalid(char),
+    ClassMustClose,
+    ClassSetMustClose,
+    EllipsisNotFirst,
+    EllipsisNotLast,
+    EllipsisOnlyChar,
+    EmptyRegex,
+    EscapeNotLast,
+    Invalid(char),
+    LiteralMustClose(char),
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error: {}", match *self {
+            ParseError::ClassInvalid(ref c) => 
+                format!("`{}` is invalid inside `<>` and outside `[]`.", c),
+            ParseError::ClassMustClose    => "A `<` must have a closing `>`.".to_owned(),
+            ParseError::ClassSetMustClose => "A `[` must have a closing `]`.".to_owned(),
+            ParseError::EllipsisNotFirst  => "`..` cannot be the first element in a character class.".to_owned(),
+            ParseError::EllipsisNotLast   => "An `..` must be followed by another char.".to_owned(),
+            ParseError::EllipsisOnlyChar  => "`..` only operate on characters.".to_owned(),
+            ParseError::EmptyRegex        => "An empty regex is not allowed.".to_owned(),
+            ParseError::EscapeNotLast     => "A `\\` must be followed by another char.".to_owned(),
+            ParseError::Invalid(ref c)    => format!("`{}` is not valid here.", c),
+            ParseError::LiteralMustClose(ref c) => 
+                format!("A literal must have an opening and closing `{}`.", c),
+        })
+    }
+}
+
+/*impl error::Error for ParseError {
+    fn description(&self) -> &str {
+        match *self {
+            CliError::Io(ref err) => err.description(),
+            CliError::Parse(ref err) => error::Error::description(err),
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            CliError::Io(ref err) => Some(err),
+            CliError::Parse(ref err) => Some(err),
+        }
+    }
+}*/
 
 pub trait ToCharSet {
     fn to_char_set(&self) -> CharSet;
@@ -128,7 +180,7 @@ impl Ast {
 pub fn parse(s: &str) -> Vec<Ast> {
     Parser { chars: s.chars().collect(),
              pos: 0,
-    }.parse()
+    }.parse().unwrap()
 }
 
 struct Parser {
@@ -144,32 +196,32 @@ impl Parser {
 
         self.pos != self.chars.len()
     }
-    fn parse(&mut self) -> Vec<Ast> {
+    fn parse(&mut self) -> Result<Vec<Ast>> {
         let mut vec = vec![];
 
-        if self.chars.len() == 0 { panic!("An empty regex is not allowed.") }
+        if self.chars.len() == 0 { return Err(ParseError::EmptyRegex) }
 
         loop {
             let c = self.cur();
 
             if is_alphanumeric(c) { vec.push(Ast::Char(c)) }
             else if !is_whitespace(c) {
-                vec.push(match c {
+                vec.push(try!(match c {
                     '\\'       => self.parse_escape(),
                     '\'' | '"' => self.parse_literal(),
                     '<'        => self.parse_class(),
-                    '.'        => Ast::Dot,
-                    _          => panic!("`{}` is not valid here.", c),
-                });
+                    '.'        => Ok(Ast::Dot),
+                    _          => Err(ParseError::Invalid(c)),
+                }));
             }
 
             if !self.next() { break }
         }
 
-        vec
+        Ok(vec)
     }
     // Parse the `< [123 a] + [4 \d] - [\w \d] >`
-    fn parse_class(&mut self) -> Ast {
+    fn parse_class(&mut self) -> Result<Ast> {
         // Classes will need to be merged later which requires collapsing from the
         // front so I'm using a deque (`<[abc] + [cde]>` collapses to `<[a...e]>`).
         let mut deque = VecDeque::new();
@@ -182,18 +234,18 @@ impl Parser {
                 closed = true;
                 break;
             } else if !is_whitespace(c) {
-                deque.push_back(match c {
-                    '-'       => Ast::Op(Op::Difference),
-                    '^'       => Ast::Op(Op::SymmetricDifference),
-                    '&'       => Ast::Op(Op::Intersection),
-                    '+' | '|' => Ast::Op(Op::Union),
+                deque.push_back(try!(match c {
+                    '-'       => Ok(Ast::Op(Op::Difference)),
+                    '^'       => Ok(Ast::Op(Op::SymmetricDifference)),
+                    '&'       => Ok(Ast::Op(Op::Intersection)),
+                    '+' | '|' => Ok(Ast::Op(Op::Union)),
                     '['       => self.parse_class_set(),
-                    _         => panic!("`{:?}` is invalid inside `<>` and outside `[]`.", c),
-                });
+                    _         => Err(ParseError::ClassInvalid(c)),
+                }));
             }
         }
 
-        if !closed { panic!("A `<` must have a closing `>`."); }
+        if !closed { return Err(ParseError::ClassMustClose) }
 
         // Insert `Empty` in front if first character is a binary op.
         match deque[0] {
@@ -213,10 +265,10 @@ impl Parser {
             _ => {},
         }
 
-        Ast::Class(deque)
+        Ok(Ast::Class(deque))
     }
     // Inside a `<>`, parse the `[123 a]` or `[4 \d]`. Assume `[` is the first char.
-    fn parse_class_set(&mut self) -> Ast {
+    fn parse_class_set(&mut self) -> Result<Ast> {
         // Need a set but an ellipsis will require pulling the last element back off
         // the end. A set may not preserve order so a vec is used to build then
         // morphed into a set later.
@@ -227,49 +279,49 @@ impl Parser {
             let c = self.cur();
 
             if c == ']' { closed = true } else if !is_whitespace(c) {
-                let ast = match c {
+                let ast = try!(match c {
                     '\\' => self.parse_escape(),
                     '.'  => {
                         if self.peek('.') {
                             self.next(); // Advance to second `.`
                             // Pull off the last `Ast` before the `..`
-                            let before = match vec.pop() {
-                                Some(Ast::Char(c)) => c,
-                                Some(_) => panic!("`..` only operate on characters."),
-                                None => panic!("`..` cannot be the first element in a character class."),
-                            };
+                            let before = try!(match vec.pop() {
+                                Some(Ast::Char(c)) => Ok(c),
+                                Some(_) => Err(ParseError::EllipsisOnlyChar),
+                                None    => Err(ParseError::EllipsisNotFirst),
+                            });
 
                             self.parse_ellipsis(before)
-                        } else { Ast::Char(c) }
+                        } else { Ok(Ast::Char(c)) }
                     },
-                    c    => Ast::Char(c),
-                };
+                    c    => Ok(Ast::Char(c)),
+                });
 
                 vec.push(ast);
             }
         }
 
-        if !closed { panic!("A `[` must have a closing `]`.") }
+        if !closed { return Err(ParseError::ClassSetMustClose) }
 
         let set: CharSet = vec.into_iter().collect();
 
-        Ast::Set(set, Inclusive)
+        Ok(Ast::Set(set, Inclusive))
     }
     // The `a .. b` notation has been parsed. Determine `b` and return an
     // inclusive `Set` from `a` to `b`.
-    fn parse_ellipsis(&mut self, a: char) -> Ast {
+    fn parse_ellipsis(&mut self, a: char) -> Result<Ast> {
         while self.next() {
             let b = self.cur();
-            if !is_whitespace(b) { return Ast::Range(a, b) }
+            if !is_whitespace(b) { return Ok(Ast::Range(a, b)) }
         }
-
-        panic!("An `..` must be followed by another char.");
+        
+        Err(ParseError::EllipsisNotLast)
     }
     // Parse the `\w`, `\d`, ... types
-    fn parse_escape(&mut self) -> Ast {
-        if !self.next() { panic!("A `\\` must be followed by another char."); }
+    fn parse_escape(&mut self) -> Result<Ast> {
+        if !self.next() { return Err(ParseError::EscapeNotLast) }
 
-        match self.cur() {
+        Ok(match self.cur() {
             'd' => Ast::Set(PERLD.to_char_set(), Inclusive),
             'D' => Ast::Set(PERLD.to_char_set(), Exclusive),
             'n' => Ast::Set('\n'.to_char_set(), Inclusive),
@@ -281,21 +333,21 @@ impl Parser {
             'w' => Ast::Set(PERLW.to_char_set(), Inclusive),
             'W' => Ast::Set(PERLW.to_char_set(), Exclusive),
             c   => Ast::Set(c.to_char_set(), Inclusive),
-        }
+        })
     }
     // Parse the `'hello world'` and `"testing_this"`
-    fn parse_literal(&mut self) -> Ast {
+    fn parse_literal(&mut self) -> Result<Ast> {
         let close = self.cur();
         let mut vec = vec![];
 
         while self.next() {
             let c = self.cur();
-            if c == close { return Ast::Literal(vec) }
+            if c == close { return Ok(Ast::Literal(vec)) }
 
             vec.push(c);
         }
 
-        panic!("A literal must have an opening and closing `{:?}`.");
+        Err(ParseError::LiteralMustClose(close))
     }
     // Check if next character matches `needle`. Doesn't modify pos.
     fn peek(&mut self, needle: char) -> bool {
