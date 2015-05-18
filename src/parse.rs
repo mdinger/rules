@@ -7,7 +7,7 @@ use std::result;
 use unicode::regex::{PERLD, PERLS, PERLW};
 
 pub type CharSet = BTreeSet<Ast>;
-type Result<T> = result::Result<T, ParseError>;
+pub type Result<T> = result::Result<T, ParseError>;
 
 #[derive(Debug)]
 enum ParseError {
@@ -41,22 +41,6 @@ impl fmt::Display for ParseError {
         })
     }
 }
-
-/*impl error::Error for ParseError {
-    fn description(&self) -> &str {
-        match *self {
-            CliError::Io(ref err) => err.description(),
-            CliError::Parse(ref err) => error::Error::description(err),
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        match *self {
-            CliError::Io(ref err) => Some(err),
-            CliError::Parse(ref err) => Some(err),
-        }
-    }
-}*/
 
 pub trait ToCharSet {
     fn to_char_set(&self) -> CharSet;
@@ -177,10 +161,10 @@ impl Ast {
     }*/
 }
 
-pub fn parse(s: &str) -> Vec<Ast> {
+pub fn parse(s: &str) -> Result<Vec<Ast>> {
     Parser { chars: s.chars().collect(),
              pos: 0,
-    }.parse().unwrap()
+    }.parse()
 }
 
 struct Parser {

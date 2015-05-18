@@ -9,7 +9,7 @@ struct Regex {
 
 impl Regex {
     pub fn new(s: &str) {
-        let vec = parse::parse(s);
+        let vec = parse::parse(s).unwrap();
         collapse::collapse(vec);
         
         

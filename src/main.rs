@@ -8,7 +8,13 @@ use rules::parse;
 use rules::collapse;
 
 fn test_collapse(regex: &str) {
-    let parsed = parse::parse(regex);
+    let parsed = match parse::parse(regex) {
+        Ok(vec) => vec,
+        Err(e) => {
+            println!("{}", e);
+            return;
+        }
+    };
     println!("Parsed:\n{:?}", &parsed);
 
     let collapsed = collapse::collapse(parsed);
