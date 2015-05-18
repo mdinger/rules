@@ -14,6 +14,7 @@ enum ParseError {
     ClassInvalid(char),
     ClassMustClose,
     ClassSetMustClose,
+    EllipsisCloseNeedsEscape,
     EllipsisNotFirst,
     EllipsisNotLast,
     EllipsisOnlyChar,
@@ -30,6 +31,8 @@ impl fmt::Display for ParseError {
                 format!("`{}` is invalid inside `<>` and outside `[]`.", c),
             ParseError::ClassMustClose    => "A `<` must have a closing `>`.".to_owned(),
             ParseError::ClassSetMustClose => "A `[` must have a closing `]`.".to_owned(),
+            ParseError::EllipsisCloseNeedsEscape =>
+                "An `..` cannot be closed by an unescaped `]`".to_owned(),
             ParseError::EllipsisNotFirst  => "`..` cannot be the first element in a character class.".to_owned(),
             ParseError::EllipsisNotLast   => "An `..` must be followed by another char.".to_owned(),
             ParseError::EllipsisOnlyChar  => "`..` only operate on characters.".to_owned(),
@@ -191,7 +194,7 @@ impl Parser {
             if is_alphanumeric(c) { vec.push(Ast::Char(c)) }
             else if !is_whitespace(c) {
                 vec.push(try!(match c {
-                    '\\'       => self.parse_escape(),
+                    '\\'       => self.parse_escape_set(),
                     '\'' | '"' => self.parse_literal(),
                     '<'        => self.parse_class(),
                     '.'        => Ok(Ast::Dot),
@@ -264,7 +267,7 @@ impl Parser {
 
             if c == ']' { closed = true } else if !is_whitespace(c) {
                 let ast = try!(match c {
-                    '\\' => self.parse_escape(),
+                    '\\' => self.parse_escape_set(),
                     '.'  => {
                         if self.peek('.') {
                             self.next(); // Advance to second `.`
@@ -296,16 +299,27 @@ impl Parser {
     fn parse_ellipsis(&mut self, a: char) -> Result<Ast> {
         while self.next() {
             let b = self.cur();
-            if !is_whitespace(b) { return Ok(Ast::Range(a, b)) }
+            if !is_whitespace(b) {
+                return match b {
+                    ']'  => Err(ParseError::EllipsisCloseNeedsEscape),
+                    '\\' => self.parse_escape().map(|c| Ast::Range(a, c)),
+                    _    => Ok(Ast::Range(a, b)),
+                };
+            }
         }
         
         Err(ParseError::EllipsisNotLast)
     }
-    // Parse the `\w`, `\d`, ... types
-    fn parse_escape(&mut self) -> Result<Ast> {
+    // Return the next character which follows a `\`.
+    fn parse_escape(&mut self) -> Result<char> {
         if !self.next() { return Err(ParseError::EscapeNotLast) }
 
-        Ok(match self.cur() {
+        Ok(self.cur())
+    }
+    // Parse the `\w`, `\d`, ... types
+    fn parse_escape_set(&mut self) -> Result<Ast> {
+        self.parse_escape()
+            .map(|c| match c {
             'd' => Ast::Set(PERLD.to_char_set(), Inclusive),
             'D' => Ast::Set(PERLD.to_char_set(), Exclusive),
             'n' => Ast::Set('\n'.to_char_set(), Inclusive),
