@@ -120,8 +120,21 @@ pub enum Op {
     Union,                  // + or |
 }
 
-/*impl Op {
-    fn difference(class: &mut VecDeque<Ast>) {
+impl Op {
+    fn apply(&self, left: Ast, right: Ast) -> Ast {
+        match *self {
+            Op::Union => self.union(left, right),
+            _ => panic!("Unimplemented!"),
+        }
+    }
+    fn union(&self, left: Ast, right: Ast) -> Ast {
+        match (left, right) {
+            (Ast::Empty, right) => right,
+            (left , Ast::Empty) => left,
+            _ => panic!("Unimplemented"),
+        }
+    }
+       /*fn difference(class: &mut VecDeque<Ast>) {
         // `class[1]` is the op which called this function.
         let difference = match (class[0], class[2]) {
             (Ast::Empty, group) => group.negate(),
@@ -129,8 +142,8 @@ pub enum Op {
             (Ast::Set(first_vec, first_membership), Ast::Empty) => group,
             (group, Ast::Empty) => group,
         };
-    }
-}*/
+    }*/
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Faction {
@@ -153,6 +166,12 @@ pub enum Ast {
     // few dozen pairs instead of 100s/1000s.
     Range(char, char),              // (open, close) range for character sets
     Set(CharSet, Membership),       // [1..5] or [68\w] inside a `<>`
+}
+pub fn apply_op(op: &Ast, left: Ast, right: Ast) -> Ast {
+    match op.clone() {
+        Ast::Op(op) => op.apply(left, right),
+        e      => panic!("`{:?}` should never appear here.", e),
+    }
 }
 
 impl Ast {
@@ -386,7 +405,6 @@ mod test {
     use unicode::regex::PERLS;
     use super::Ast;
     use super::Ast::*;
-    use super::parse;
     use super::Membership::*;
     use super::Op::*;
     use super::ToCharSet;
@@ -395,6 +413,9 @@ mod test {
         let deque: VecDeque<Ast> = vec.into_iter().collect();
 
         deque
+    }
+    fn parse(s: &str) -> Vec<Ast> {
+        super::parse(s).unwrap()
     }
 
     #[test]
