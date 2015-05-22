@@ -105,4 +105,15 @@ mod test {
         // A single class which is the union of all subsets.
         assert_eq!(vec![Class(deque)], simplify(r"< [ abab ] + [ bc ] + [ abc ] >"));
     }
+    #[test]
+    fn char_class_set_difference() {
+        // Set of chars inside `[]`
+        let set = vec![Char('a')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque_ex = new_deque(vec![Set(set.clone(), Exclusive)]);
+        let deque_in = new_deque(vec![Set(set, Inclusive)]);
+        // A single class which is the union of all subsets.
+        assert_eq!(vec![Class(deque_ex)], simplify(r"< - [ a ] >"));
+        assert_eq!(vec![Class(deque_in)], simplify(r"< [ abc ] - [ b ] - [ c ] - >"));
+    }
 }

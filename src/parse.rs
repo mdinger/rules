@@ -103,11 +103,11 @@ pub enum Membership {
 }
 
 impl Membership {
-    fn negate(&mut self) {
-        *self = match *self {
+    fn negate(self) -> Self {
+        match self {
             Exclusive  => Inclusive,
             Inclusive  => Exclusive,
-        };
+        }
     }
 }
 
@@ -123,7 +123,22 @@ pub enum Op {
 impl Op {
     pub fn apply(&self, left: Ast, right: Ast) -> Ast {
         match *self {
-            Op::Union => self.union(left, right),
+            Op::Difference => self.difference(left, right),
+            Op::Union      => self.union(left, right),
+            _ => unimplemented!(),
+        }
+    }
+    fn difference(&self, left: Ast, right: Ast) -> Ast {
+        match (left, right) {
+            (Ast::Empty, right) => right.negate(),
+            (left, Ast::Empty)  => left,
+            (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
+                if lmembership == rmembership {
+                    Ast::Set(lset.difference(&rset)
+                                 .cloned()
+                                 .collect(), lmembership)
+                } else { unimplemented!() }
+            },
             _ => unimplemented!(),
         }
     }
@@ -136,21 +151,11 @@ impl Op {
                     Ast::Set(lset.union(&rset)
                                  .cloned()
                                  .collect(), lmembership)
-                }
-                else { unimplemented!() }
+                } else { unimplemented!() }
             },
             _ => unimplemented!(),
         }
     }
-       /*fn difference(class: &mut VecDeque<Ast>) {
-        // `class[1]` is the op which called this function.
-        let difference = match (class[0], class[2]) {
-            (Ast::Empty, group) => group.negate(),
-            (group, Ast::Empty) => group,
-            (Ast::Set(first_vec, first_membership), Ast::Empty) => group,
-            (group, Ast::Empty) => group,
-        };
-    }*/
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -177,10 +182,10 @@ pub enum Ast {
 }
 
 impl Ast {
-    fn are_inverts(left: &Ast, right: &Ast) -> bool {
-        match (left, right) {
-            (&Ast::Set(..), &Ast::Set(..)) => { println!("two set!"); true },
-            _ => false,
+    fn negate(self) -> Ast {
+        match self {
+            Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
+            _ => unreachable!(),
         }
     }
 }
