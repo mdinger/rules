@@ -1,6 +1,4 @@
-use parse;
 use parse::Ast;
-use parse::Ast::*;//, Membership, Op};
 use std::collections::VecDeque;
 
 pub fn collapse(v: Vec<Ast>) -> Vec<Ast> {
@@ -26,8 +24,8 @@ impl Collapser {
         loop {
             let a = self.cur();
             vec.push(match a {
-                Char(_)      => a,
-                Class(mut deque) => self.collapse_class(&mut deque),
+                Ast::Char(_)      => a,
+                Ast::Class(mut deque) => self.collapse_class(&mut deque),
                 _ => panic!("incomplete"),
             });
 
@@ -36,19 +34,27 @@ impl Collapser {
 
         self.data = vec;
     }
+    // I think this entire thing might be replaceable with a fold but
+    // I was running into issues when testing it. `chunks` returns references
+    // and DequeVec doesn't implement Deref so I can't call chunks on it. Maybe
+    // in the future.
     fn collapse_class(&mut self, deque: &mut VecDeque<Ast>) -> Ast {
         let mut left = deque.pop_front().unwrap();
 
         while let Some(op) = deque.pop_front() {
             let right = deque.pop_front().unwrap();
 
-            left = parse::apply_op(&op, left, right);
+            left = match op {
+                Ast::Op(op) => op.apply(left, right),
+                // Only operators should ever appear here.
+                e => unreachable!(),
+            };
         }
 
         let mut ret = VecDeque::new();
         ret.push_front(left);
 
-        Class(ret)
+        Ast::Class(ret)
     }
     fn next(&mut self) -> bool {
         self.pos += 1;
@@ -90,15 +96,13 @@ mod test {
         assert_eq!(vec![Class(deque.clone())], simplify(r"< + [ a ] >"));
         assert_eq!(vec![Class(deque)], simplify(r"<[ a ] + >"));
     }
-
-    /*#[test]
-    fn char_class_union() {
+    #[test]
+    fn char_class_set_union() {
         // Set of chars inside `[]`
-        let set = vec![Char('a'), Char('b')].to_char_set();
+        let set = vec![Char('a'), Char('b'), Char('c')].to_char_set();
         // Deque of ops and sets inside `<>`
         let deque = new_deque(vec![Set(set, Inclusive)]);
-        // A single class denoted by `<[]>`
-        // A single class denoted by `<[]>`
-        assert_eq!(vec![Class(deque)], collapse(parse(r"< [ a ] + [ b ] >")));
-    }*/
+        // A single class which is the union of all subsets.
+        assert_eq!(vec![Class(deque)], simplify(r"< [ abab ] + [ bc ] + [ abc ] >"));
+    }
 }

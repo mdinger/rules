@@ -121,17 +121,25 @@ pub enum Op {
 }
 
 impl Op {
-    fn apply(&self, left: Ast, right: Ast) -> Ast {
+    pub fn apply(&self, left: Ast, right: Ast) -> Ast {
         match *self {
             Op::Union => self.union(left, right),
-            _ => panic!("Unimplemented!"),
+            _ => unimplemented!(),
         }
     }
     fn union(&self, left: Ast, right: Ast) -> Ast {
         match (left, right) {
             (Ast::Empty, right) => right,
             (left , Ast::Empty) => left,
-            _ => panic!("Unimplemented"),
+            (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
+                if lmembership == rmembership {
+                    Ast::Set(lset.union(&rset)
+                                 .cloned()
+                                 .collect(), lmembership)
+                }
+                else { unimplemented!() }
+            },
+            _ => unimplemented!(),
         }
     }
        /*fn difference(class: &mut VecDeque<Ast>) {
@@ -167,20 +175,14 @@ pub enum Ast {
     Range(char, char),              // (open, close) range for character sets
     Set(CharSet, Membership),       // [1..5] or [68\w] inside a `<>`
 }
-pub fn apply_op(op: &Ast, left: Ast, right: Ast) -> Ast {
-    match op.clone() {
-        Ast::Op(op) => op.apply(left, right),
-        e      => panic!("`{:?}` should never appear here.", e),
-    }
-}
 
 impl Ast {
-    /*fn negate(&mut self) {
-        *self = match *self {
-            Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
-            ast => panic!("Negating `{:?}` is invalid.", ast),
-        };
-    }*/
+    fn are_inverts(left: &Ast, right: &Ast) -> bool {
+        match (left, right) {
+            (&Ast::Set(..), &Ast::Set(..)) => { println!("two set!"); true },
+            _ => false,
+        }
+    }
 }
 
 pub fn parse(s: &str) -> Result<Vec<Ast>> {
