@@ -79,23 +79,6 @@ impl ToCharSet for Vec<Ast> {
     }
 }
 
-enum Unicode {
-    Digit,
-    Whitespace,
-    Word,
-}
-
-impl Unicode {
-    fn to_set(&self) -> Ast {
-        Ast::Set(match *self {
-            Unicode::Digit      => PERLD.to_char_set(),
-            Unicode::Whitespace => PERLS.to_char_set(),
-            Unicode::Word       => PERLW.to_char_set(),
-        },
-        Inclusive)
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Membership {
     Exclusive,

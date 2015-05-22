@@ -47,7 +47,7 @@ impl Collapser {
             left = match op {
                 Ast::Op(op) => op.apply(left, right),
                 // Only operators should ever appear here.
-                e => unreachable!(),
+                _ => unreachable!(),
             };
         }
 
