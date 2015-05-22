@@ -116,4 +116,14 @@ mod test {
         assert_eq!(vec![Class(deque_ex)], simplify(r"< - [ a ] >"));
         assert_eq!(vec![Class(deque_in)], simplify(r"< [ abc ] - [ b ] - [ c ] - >"));
     }
+    #[test]
+    fn char_class_set_symmetric_difference() {
+        // Set of chars inside `[]`
+        let set = vec![Char('a')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque = new_deque(vec![Set(set, Inclusive)]);
+        // A single class which is the union of all subsets.
+        assert_eq!(vec![Class(deque.clone())], simplify(r"< ^ [ a ] ^ >"));
+        assert_eq!(vec![Class(deque)], simplify(r"<[ \d abc ] ^ [ \d bcde ] ^ [ de ]>"));
+    }
 }
