@@ -160,13 +160,23 @@ impl Op {
             (Ast::Empty, right) => right,
             (left , Ast::Empty) => left,
             (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
-                if lmembership == rmembership {
-                    Ast::Set(lset.union(&rset)
-                                 .cloned()
-                                 .collect(), lmembership)
-                } else { unimplemented!() }
+                // Unifying sets with opposite membership isn't obvious. If
+                // -3 is 3 Exclusive and 3 is Inclusive then `-3 + 3` is a
+                // union which is identical to `-(3 - 3)` = `-()`. Similarly,
+                // `-1 + 7` = `-(1 - 7)` = `-1`.
+                match (lmembership, rmembership) {
+                    (lmem, rmem) if lmem == rmem => Ast::Set(lset.union(&rset)
+                                                                 .cloned()
+                                                                 .collect(), lmem),
+                    (lmem @ Exclusive, rmem) => Ast::Set(lset.difference(&rset)
+                                                             .cloned()
+                                                             .collect(), lmem),
+                    (lmem @ Inclusive, rmem) => Ast::Set(rset.difference(&lset)
+                                                             .cloned()
+                                                             .collect(), rmem),
+                }
             },
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
 }
@@ -195,7 +205,35 @@ pub enum Ast {
 }
 
 impl Ast {
-    fn negate(self) -> Ast {
+    // While a class is being collapsed, a Set may include Sets inside it with
+    // varying memberships. This flattens a Set into one single layer, applying
+    // a union to sets when their membership varies.
+    pub fn flatten(self) -> Self {
+        let mut inclusive: CharSet = BTreeSet::new();
+        let mut exclusive: CharSet = BTreeSet::new();
+
+        if let Ast::Set(set_outer, membership_outer) = self {
+            for i in set_outer {
+                if let Ast::Set(set_inner, membership_inner) = i {
+                    for j in set_inner {
+                        if membership_inner == Inclusive { inclusive.insert(j); }
+                        else { exclusive.insert(j); }
+                    }
+                } else {
+                    if membership_outer == Inclusive { inclusive.insert(i); }
+                    else { exclusive.insert(i); }
+                }
+            }
+
+            // A union applied to an empty exclusion would include everything.
+            // Check for empty sets to handle manually.
+            if exclusive.is_empty() { Ast::Set(inclusive, Inclusive) }
+            else if inclusive.is_empty() { Ast::Set(exclusive, Exclusive) }
+            else { Op::Union.apply(Ast::Set(inclusive, Inclusive),
+                                   Ast::Set(exclusive, Exclusive)) }
+        } else { self }
+    }
+    fn negate(self) -> Self {
         match self {
             Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
             _ => unreachable!(),
