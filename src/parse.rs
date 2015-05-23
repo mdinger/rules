@@ -108,6 +108,7 @@ impl Op {
         match *self {
             Op::Difference          => self.difference(left, right),
             Op::SymmetricDifference => self.symmetric_difference(left, right),
+            Op::Intersection        => self.intersection(left, right),
             Op::Union               => self.union(left, right),
             _ => unimplemented!(),
         }
@@ -133,6 +134,20 @@ impl Op {
             (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
                 if lmembership == rmembership {
                     Ast::Set(lset.symmetric_difference(&rset)
+                                 .cloned()
+                                 .collect(), lmembership)
+                } else { unimplemented!() }
+            },
+            _ => unimplemented!(),
+        }
+    }
+    fn intersection(&self, left: Ast, right: Ast) -> Ast {
+        match (left, right) {
+            (Ast::Empty, _) |
+            (_, Ast::Empty)  => Ast::Empty,
+            (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
+                if lmembership == rmembership {
+                    Ast::Set(lset.intersection(&rset)
                                  .cloned()
                                  .collect(), lmembership)
                 } else { unimplemented!() }
