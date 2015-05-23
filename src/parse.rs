@@ -72,7 +72,7 @@ impl ToCharSet for char {
 
 impl ToCharSet for Vec<Ast> {
     fn to_char_set(&self) -> CharSet {
-        let vec = (*self).clone();
+        let vec = self.clone();
         let set: CharSet = vec.into_iter().collect();
 
         set
