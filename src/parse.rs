@@ -1,7 +1,7 @@
 use parse::Membership::*;
 use parse::Faction::*;
 use std::collections::{BTreeSet, VecDeque};
-use std::fmt;
+use std::{char, fmt};
 use std::result;
 // Unicode tables for character classes are defined in libunicode
 use unicode::regex::{PERLD, PERLS, PERLW};
@@ -79,6 +79,16 @@ impl ToCharSet for Vec<Ast> {
     }
 }
 
+trait NextPrev {
+    fn next(&self) -> Self;
+    fn prev(&self) -> Self;
+}
+
+impl NextPrev for char {
+    fn next(&self) -> Self { char::from_u32(*self as u32 + 1).unwrap() }
+    fn prev(&self) -> Self { char::from_u32(*self as u32 - 1).unwrap() }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Membership {
     Exclusive,
@@ -104,29 +114,71 @@ pub enum Op {
 }
 
 impl Op {
+    // Apply set operations. Must have `Char` removed beforehand. Subsets should be
+    // removed beforehand. This will remove new subsets before exiting.
     pub fn apply(&self, left: Ast, right: Ast) -> Ast {
-        match *self {
+
+        let applied = match *self {
             Op::Difference          => self.difference(left, right),
             Op::SymmetricDifference => self.symmetric_difference(left, right),
             Op::Intersection        => self.intersection(left, right),
             Op::Union               => self.union(left, right),
             _ => unimplemented!(),
-        }
+        };
+
+        applied.remove_subsets()
     }
+    // Set ranges can be overlapping or non-overlapping. This is problematic for matching
+    // because very similar sets are considered distinct meaning set operations will
+    // not function properly: range(2,3) + range(2,4) = { range(2,3), range(2,4) }.
+    // This modifies the sets so they don't partially overlap. This will allow
+    // inner sets to be removed later.
+    fn align(&self, left: CharSet, right: CharSet) -> (CharSet, CharSet) {
+        let mut lset = BTreeSet::new();
+        let mut rset = BTreeSet::new();
+
+        for l in &left {
+            for r in &right {
+                let (l_range, r_range) = match (l, r) {
+                    (&Ast::Range(min1, max1), &Ast::Range(min2, max2)) => {
+                        // First overlaps at the beginning.
+                        let l = if min1 < min2 && max1 >= min2 { vec![Ast::Range(min1, min2.prev()),
+                                                                      Ast::Range(min2, max1)] }
+                        // First overlaps at the end.
+                        else if min1 <= max2 && max1 > max2 { vec![Ast::Range(min1, max2),
+                                                                   Ast::Range(max2.next(), max1)] }
+                        // Complete overlap or no overlap.
+                        else { vec![Ast::Range(min1, max1)] };
+
+                        (l, vec![Ast::Range(min2, max2)])
+                    },
+                    _ => unreachable!(),
+                };
+
+                for i in l_range { lset.insert(i); }
+                for j in r_range { rset.insert(j); }
+            }
+        }
+
+        (lset, rset)
+    }
+    // Apply set difference.
     fn difference(&self, left: Ast, right: Ast) -> Ast {
         match (left, right) {
             (Ast::Empty, right) => right.negate(),
             (left, Ast::Empty)  => left,
-            (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
-                if lmembership == rmembership {
-                    Ast::Set(lset.difference(&rset)
-                                 .cloned()
-                                 .collect(), lmembership)
-                } else { unimplemented!() }
+            (Ast::Set(lset, lmem), Ast::Set(rset, rmem)) => {
+                match (lmem, rmem) {
+                    (l, r) if l == r => Ast::Set(lset.difference(&rset)
+                                                     .cloned()
+                                                     .collect(), l),
+                    _ => unimplemented!(),
+                }
             },
             _ => unimplemented!(),
         }
     }
+    // Apply symmetric set difference.
     fn symmetric_difference(&self, left: Ast, right: Ast) -> Ast {
         match (left, right) {
             (Ast::Empty, right) => right,
@@ -141,39 +193,47 @@ impl Op {
             _ => unimplemented!(),
         }
     }
+    // Apply set intersection.
     fn intersection(&self, left: Ast, right: Ast) -> Ast {
         match (left, right) {
             (Ast::Empty, _) |
             (_, Ast::Empty)  => Ast::Empty,
-            (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
-                if lmembership == rmembership {
-                    Ast::Set(lset.intersection(&rset)
-                                 .cloned()
-                                 .collect(), lmembership)
-                } else { unimplemented!() }
+            (Ast::Set(lset, lmem), Ast::Set(rset, rmem)) => {
+                match (lmem, rmem) {
+                    (l, r) if l == r => Ast::Set(lset.intersection(&rset)
+                                                     .cloned()
+                                                     .collect(), l),
+                    _ => unimplemented!(),
+                }
             },
             _ => unimplemented!(),
         }
     }
+    // Apply set union.
     fn union(&self, left: Ast, right: Ast) -> Ast {
         match (left, right) {
             (Ast::Empty, right) => right,
             (left , Ast::Empty) => left,
             (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
+                let (lset, rset) = self.align(lset, rset);
                 // Unifying sets with opposite membership isn't obvious. If
                 // -3 is 3 Exclusive and 3 is Inclusive then `-3 + 3` is a
                 // union which is identical to `-(3 - 3)` = `-()`. Similarly,
                 // `-1 + 7` = `-(1 - 7)` = `-1`.
+                //
+                // However, a `Range(x,y)` may appear inside a `Range(z,t)`
+                // which a straight union wouldn't realize. Some manual prep
+                // must be done.
                 match (lmembership, rmembership) {
                     (lmem, rmem) if lmem == rmem => Ast::Set(lset.union(&rset)
                                                                  .cloned()
                                                                  .collect(), lmem),
-                    (lmem @ Exclusive, rmem) => Ast::Set(lset.difference(&rset)
-                                                             .cloned()
-                                                             .collect(), lmem),
-                    (lmem @ Inclusive, rmem) => Ast::Set(rset.difference(&lset)
-                                                             .cloned()
-                                                             .collect(), rmem),
+                    (lmem @ Exclusive, _) => Ast::Set(lset.difference(&rset)
+                                                          .cloned()
+                                                          .collect(), lmem),
+                    (Inclusive, rmem)     => Ast::Set(rset.difference(&lset)
+                                                          .cloned()
+                                                          .collect(), rmem),
                 }
             },
             _ => unreachable!(),
@@ -227,15 +287,99 @@ impl Ast {
 
             // A union applied to an empty exclusion would include everything.
             // Check for empty sets to handle manually.
-            if exclusive.is_empty() { Ast::Set(inclusive, Inclusive) }
-            else if inclusive.is_empty() { Ast::Set(exclusive, Exclusive) }
-            else { Op::Union.apply(Ast::Set(inclusive, Inclusive),
-                                   Ast::Set(exclusive, Exclusive)) }
+            //
+            // They may still have `Char(c)` inside. Convert to `Range(c,c)` for
+            // easier processing. Remove subsets before applying an op.
+            //
+            // Subset may be of form: `<[0..3 1..3]>` and a union should be applied.
+            if exclusive.is_empty() { Ast::Set(inclusive, Inclusive).strip_char()
+                                                                    .remove_subsets() }
+            else { Op::Union.apply(Ast::Set(inclusive, Inclusive).strip_char()
+                                                                 .remove_subsets(),
+                                   Ast::Set(exclusive, Exclusive).strip_char()
+                                                                 .remove_subsets()) }
         } else { self }
     }
     fn negate(self) -> Self {
         match self {
             Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
+            _ => unreachable!(),
+        }
+    }
+    // A set such as `2..3 + \d` would result in 2 separate ranges being stored:
+    // Range(2,3) and the other which is it's superset. The reason is because
+    // they have different values, they are considered distinct. This removes
+    // subsets.
+    //
+    // BTreeSet seems to be sorted by the first element which is good. This
+    // doesn't have to be O(2).
+    pub fn remove_subsets(self) -> Self {
+        let mut ret: CharSet = BTreeSet::new();
+        let mut first = true;
+        // Filler to appease the compiler.
+        let mut previous = Ast::Empty;
+
+        match self {
+            Ast::Set(set, membership) => {
+                for current in set {
+                    if first {
+                        first = false;
+                        previous = current;
+                    } else {
+                        previous = previous.superset(&current)
+                                           .map_or_else( || { ret.insert(previous);
+                                                              current },
+                                                         |x| x);
+                    }
+                }
+
+                // If passed empty set, the above loop will never run.
+                if !first { ret.insert(previous); }
+                Ast::Set(ret, membership)
+            },
+            ret => ret,
+        }
+    }
+    // Dealing with all variations of `Char(c)` and `Range(a, b)` is complicated.
+    // So all `Char` are stripped out of character classes for easier simplification.
+    pub fn strip_char(self) -> Self {
+        let mut ret = BTreeSet::new();
+
+        if let Ast::Set(set, membership) = self {
+            for i in set {
+                ret.insert(match i {
+                    Ast::Char(c) => Ast::Range(c, c),
+                    x => x,
+                });
+            }
+
+            Ast::Set(ret, membership)
+        } else { self }
+    }
+    // Change all `Range(x, x)` back to `Char(x)` since we've finished set ops.
+    pub fn strip_double_range(self) -> Self {
+        let mut ret = BTreeSet::new();
+
+        if let Ast::Set(set, membership) = self {
+            for i in set {
+                ret.insert(match i {
+                    Ast::Range(x, y) if x == y => Ast::Char(x),
+                    x => x,
+                });
+            }
+
+            Ast::Set(ret, membership)
+        } else { self }
+    }
+ 
+    // Returns the superset of the two or None.
+    fn superset(&self, r: &Ast) -> Option<Self> {
+        match (self, r) {
+            (&Ast::Range(min1, max1), &Ast::Range(min2, max2)) => {
+                if      min1 <= min2 && max1 >= max2 { Some(Ast::Range(min1, max1)) }
+                else if min2 <= min1 && max2 >= max1 { Some(Ast::Range(min2, max2)) }
+                else { None }
+            },
             _ => unreachable!(),
         }
     }

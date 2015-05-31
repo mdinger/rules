@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(slice_patterns)]
 
 //! # Rules
 //! Rules uses regular expressions to do pattern matching using syntax

@@ -55,10 +55,11 @@ impl Collapser {
             };
         }
 
+        // Empty intersections like `< & [a] >` are not allowed.
         if let Ast::Empty = left { panic!("An empty class `<[]>` is not allowed!") }
 
         let mut ret = VecDeque::new();
-        ret.push_front(left);
+        ret.push_front(left.strip_double_range());
 
         Ast::Class(ret)
     }
@@ -115,6 +116,37 @@ mod test {
         assert_eq!(vec![Class(everything.clone())], simplify(r"< [ abc \d \D ] >"));
         assert_eq!(vec![Class(everything)], simplify(r"< [ abc ] + [ \d ] + [ \D ] >"));
     }
+/*
+    #[test]
+    #[should_panic]
+    fn char_class_set_subset_complete_overlap() {
+        assert!(simplify(r"< [ 0..6 0..9 ]>");
+    }
+
+    #[test]
+    #[should_panic]
+    fn char_class_set_subset_partial_overlap() {
+        assert!(simplify(r"< [ 0..3 2..9 ]>");
+    }
+*/
+    #[test]
+    fn char_class_set_union_sets_disjoint() {
+        // Set of chars inside `[]`
+        let set   = vec![Range('0', '1'), Range('2', '9')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque = new_deque(vec![Set(set, Inclusive)]);
+        // A single class which is the union of all subsets.
+        assert_eq!(vec![Class(deque)], simplify(r"< [ 0..3 ] + [ 2..9 ]>"));
+    }
+    #[test]
+    fn char_class_set_union_subsets() {
+        // Set of chars inside `[]`
+        let set   = vec![Range('0', '9')].to_char_set();
+        // Deque of ops and sets inside `<>`
+        let deque = new_deque(vec![Set(set, Inclusive)]);
+        // A single class which is the union of all subsets.
+        assert_eq!(vec![Class(deque)], simplify(r"< [ 0..3 ] + [ 0..9 ]>"));
+    }
     #[test]
     fn char_class_set_difference() {
         // Set of chars inside `[]`
@@ -152,6 +184,4 @@ mod test {
         // empty class is not allowed.
         simplify(r"< & [ abc ]>");
     }
-
-
 }
