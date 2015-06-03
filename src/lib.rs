@@ -1,0 +1,131 @@
+#![allow(dead_code)]
+
+use std::collections::BTreeSet;
+use std::fmt::{self, Display};
+
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct Range(pub char, pub char);
+
+impl fmt::Display for Range {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.0, self.1)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Set(BTreeSet<Range>);
+
+impl fmt::Display for Set {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Set(ref set) = *self;
+        let len = BTreeSet::len(set);
+
+        for (count, s) in set.iter().enumerate() {
+            if count < len - 1 { try!(write!(f, "{}, ", s)) }
+            else { return write!(f, "{}", s) }
+        }
+
+        Ok(())
+    }
+}
+
+impl Set {
+    pub fn new() -> Self { Set(BTreeSet::new()) }
+    pub fn insert(&mut self, value: Range) {
+        let mut ret = BTreeSet::new();
+        // value is a complete subset of one of the other ranges.
+        let mut subset = false;
+
+        {   let Set(ref set) = *self;
+
+            let Range(mut min_val, mut max_val) = value;
+            if min_val > max_val { panic!("First value cannot be greater than the second.") }
+
+            for &Range(min, max) in &*set {
+                // value overlaps at the beginning.
+                if min_val < min && max_val >= min && max_val < max { max_val = max }
+                // value overlaps at the end.
+                else if min_val > min && min_val <= max && max_val > max { min_val = min }
+                // value is entirely contained between min and max. Insert original
+                // into new array because new is a subset.
+                else if min_val > min && max_val < max {
+                    ret.insert(Range(min, max)); 
+                    subset = true;
+                }
+                // value is a superset to the current so don't add current.
+                else if min_val <= min && max_val >= max {}
+                // value is disjoint with current so add current.
+                else { ret.insert(Range(min, max)); }
+            }
+
+            // Insert value only when it's not a subset.
+            if !subset { ret.insert(Range(min_val, max_val)); }
+        }
+
+        *self = Set(ret);
+    }
+    pub fn union(&mut self, value: Range) {
+        if !self.0.contains(&value) { self.insert(value) }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::{Range, Set};
+    use std::collections::BTreeSet;
+
+    fn generate(vec: Vec<(char, char)>) -> Set {
+        let mut set = Set::new();
+
+        for (a, b) in vec {
+            set.insert(Range(a, b));
+        }
+
+        set
+    }
+    #[test]
+    fn partial_overlap() {
+        let set1 = generate(vec![('3', '5'), ('4', '6')]);
+        let set2 = generate(vec![('3', '5'), ('1', '4')]);
+
+        let mut other1 = BTreeSet::new();
+        let mut other2 = BTreeSet::new();
+
+        other1.insert(Range('3', '6'));
+        other2.insert(Range('1', '5'));
+        assert_eq!(Set(other1), set1);
+        assert_eq!(Set(other2), set2);
+    }
+    #[test]
+    fn subset() {
+        let set = generate(vec![('1', '5'), ('2', '3')]);
+
+        let mut other = BTreeSet::new();
+        other.insert(Range('1', '5'));
+        assert_eq!(Set(other), set);
+    }
+    #[test]
+    fn superset() {
+        let set = generate(vec![('3', '5'), ('2', '6')]);
+
+        let mut other = BTreeSet::new();
+        other.insert(Range('2', '6'));
+        assert_eq!(Set(other), set);
+    }
+    #[test]
+    fn disjoint() {
+        let set = generate(vec![('3', '5'), ('6', '8')]);
+
+        let mut other = BTreeSet::new();
+        other.insert(Range('3', '5'));
+        other.insert(Range('6', '8'));
+
+        assert_eq!(Set(other), set);
+    }
+    #[test]
+    #[should_panic]
+    fn panic_on_decreasing_order() {
+        generate(vec![('5', '3')]);
+    }
+}
