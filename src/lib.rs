@@ -100,5 +100,6 @@
 pub mod collapse;
 pub mod parse;
 pub mod re;
+pub mod range_set;
 mod unicode;
 
