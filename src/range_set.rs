@@ -64,8 +64,8 @@ impl Set {
 
         *self = Set(ret);
     }
-    pub fn union(&mut self, value: Range) {
-        if !self.0.contains(&value) { self.insert(value) }
+    pub fn union(&mut self, value: Self) {
+        for x in value.0 { self.insert(x) }
     }
 }
 
