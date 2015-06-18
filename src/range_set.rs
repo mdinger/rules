@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 use std::fmt::{self, Display};
+use parse::NextPrev;
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Range(pub char, pub char);
@@ -36,11 +37,15 @@ impl Set {
         // value is a complete subset of one of the other ranges.
         let mut subset = false;
 
+        // Borrowing self blocks later operation. Add a new scope.
         {   let Set(ref set) = *self;
 
             let Range(mut min_val, mut max_val) = value;
             if min_val > max_val { panic!("First value cannot be greater than the second.") }
 
+            // Loop over set adding old disjoint pieces and supersets back.
+            // When partially overlapped, expand value to the union. At the
+            // end, insert union after it has been fully expanded.
             for &Range(min, max) in &*set {
                 // value overlaps at the beginning.
                 if min_val < min && max_val >= min && max_val < max { max_val = max }
@@ -64,6 +69,38 @@ impl Set {
 
         *self = Set(ret);
     }
+    pub fn remove(&mut self, value: Range) {
+        let mut ret = BTreeSet::new();
+
+        // Borrowing self blocks later modification. Make a new scope to contain it.
+        {   let Set(ref set) = *self;
+
+            let Range(min_val, max_val) = value;
+            if min_val > max_val { panic!("First value cannot be greater than the second.") }
+
+            // Loop over set inserting whatever doesn't intersect.
+            for &Range(min, max) in &*set {
+                // value overlaps at the beginning.
+                if min_val < min && max_val >= min && max_val < max { ret.insert(Range(max_val.next(), max)); }
+                // value overlaps at the end.
+                else if min_val > min && min_val <= max && max_val > max { ret.insert(Range(min, min_val.prev())); }
+                // value is entirely contained between min and max. Split set
+                // into two pieces.
+                else if min_val > min && max_val < max {
+                    ret.insert(Range(min, min_val.prev()));
+                    ret.insert(Range(max_val.next(), max));
+
+                    // Current piece was a superset so value cannot be anywhere else.
+                    break;
+                // value is a superset to the current so don't add current.
+                } else if min_val <= min && max_val >= max {}
+                // value is disjoint with current so add current.
+                else { ret.insert(Range(min, max)); }
+            }
+        }
+
+        *self = Set(ret)
+    }
     pub fn union(&mut self, value: Self) {
         for x in value.0 { self.insert(x) }
     }
@@ -84,7 +121,7 @@ mod test {
         set
     }
     #[test]
-    fn partial_overlap() {
+    fn insert_partial_overlap() {
         let set1 = generate(vec![('3', '5'), ('4', '6')]);
         let set2 = generate(vec![('3', '5'), ('1', '4')]);
 
@@ -95,14 +132,14 @@ mod test {
         assert_eq!(other2, set2);
     }
     #[test]
-    fn subset() {
+    fn insert_subset() {
         let set   = generate(vec![('1', '5'), ('2', '3')]);
         let other = generate(vec![('1', '5')]);
 
         assert_eq!(other, set);
     }
     #[test]
-    fn superset() {
+    fn insert_superset() {
         let set   = generate(vec![('3', '5'), ('2', '6')]);
         let other = generate(vec![('2', '6')]);
 
@@ -122,5 +159,44 @@ mod test {
 
         let other = generate(vec![('0', '6'), ('8', '9')]);
         assert_eq!(set1, other);
+    }
+    #[test]
+    fn remove_partial_overlap() {
+        let mut set1 = generate(vec![('5', '9')]);
+        let mut set2 = generate(vec![('2', '6')]);
+
+        set1.remove(Range('3', '6'));
+        set2.remove(Range('5', '9'));
+
+        let other1 = generate(vec![('7', '9')]);
+        let other2 = generate(vec![('2', '4')]);
+
+        assert_eq!(set1, other1);
+        assert_eq!(set2, other2);
+    }
+    #[test]
+    fn remove_subset() {
+        let mut set = generate(vec![('1', '9')]);
+        set.remove(Range('3', '6'));
+
+        let other = generate(vec![('1', '2'), ('7', '9')]);
+
+        assert_eq!(set, other);
+    }
+    #[test]
+    fn remove_superset() {
+        let mut set = generate(vec![('5', '6')]);
+        set.remove(Range('3', '8'));
+
+        let other = generate(vec![]);
+        assert_eq!(set, other);
+    }
+    #[test]
+    fn remove_disjoint() {
+        let mut set = generate(vec![('2', '3')]);
+        set.remove(Range('6', '8'));
+
+        let other = generate(vec![('2', '3')]);
+        assert_eq!(set, other);
     }
 }

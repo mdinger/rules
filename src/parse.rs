@@ -79,7 +79,7 @@ impl ToCharSet for Vec<Ast> {
     }
 }
 
-trait NextPrev {
+pub trait NextPrev {
     fn next(&self) -> Self;
     fn prev(&self) -> Self;
 }
