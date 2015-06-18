@@ -73,7 +73,6 @@ impl Set {
 #[cfg(test)]
 mod test {
     use super::{Range, Set};
-    use std::collections::BTreeSet;
 
     fn generate(vec: Vec<(char, char)>) -> Set {
         let mut set = Set::new();
@@ -89,39 +88,25 @@ mod test {
         let set1 = generate(vec![('3', '5'), ('4', '6')]);
         let set2 = generate(vec![('3', '5'), ('1', '4')]);
 
-        let mut other1 = BTreeSet::new();
-        let mut other2 = BTreeSet::new();
+        let other1 = generate(vec![('3', '6')]);
+        let other2 = generate(vec![('1', '5')]);
 
-        other1.insert(Range('3', '6'));
-        other2.insert(Range('1', '5'));
-        assert_eq!(Set(other1), set1);
-        assert_eq!(Set(other2), set2);
+        assert_eq!(other1, set1);
+        assert_eq!(other2, set2);
     }
     #[test]
     fn subset() {
-        let set = generate(vec![('1', '5'), ('2', '3')]);
+        let set   = generate(vec![('1', '5'), ('2', '3')]);
+        let other = generate(vec![('1', '5')]);
 
-        let mut other = BTreeSet::new();
-        other.insert(Range('1', '5'));
-        assert_eq!(Set(other), set);
+        assert_eq!(other, set);
     }
     #[test]
     fn superset() {
-        let set = generate(vec![('3', '5'), ('2', '6')]);
+        let set   = generate(vec![('3', '5'), ('2', '6')]);
+        let other = generate(vec![('2', '6')]);
 
-        let mut other = BTreeSet::new();
-        other.insert(Range('2', '6'));
-        assert_eq!(Set(other), set);
-    }
-    #[test]
-    fn disjoint() {
-        let set = generate(vec![('3', '5'), ('6', '8')]);
-
-        let mut other = BTreeSet::new();
-        other.insert(Range('3', '5'));
-        other.insert(Range('6', '8'));
-
-        assert_eq!(Set(other), set);
+        assert_eq!(other, set);
     }
     #[test]
     #[should_panic]
