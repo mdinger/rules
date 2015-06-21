@@ -104,6 +104,9 @@ impl Set {
     pub fn union(&mut self, value: Self) {
         for x in value.0 { self.insert(x) }
     }
+    pub fn difference(&mut self, value: Self) {
+        for x in value.0 { self.remove(x) }
+    }
 }
 
 
@@ -213,5 +216,25 @@ mod test {
 
         let other = generate(vec![('2', '3')]);
         assert_eq!(set, other);
+    }
+    #[test]
+    fn set_difference() {
+        let mut set1 = generate(vec![('2', '7')]);
+        let set2     = generate(vec![('0', '1'),   // disjoint left
+                                     ('1', '2'),   // partial overlap left
+                                     ('4', '5'),   // subset
+                                     ('7', '8'),   // partial overlap right
+                                     ('9', '9')]); // disjoint right
+        let mut letters1 = generate(vec![('c', 'e')]);
+        let     letters2 = generate(vec![('a', 'g')]); // superset
+
+        set1.difference(set2);
+        letters1.difference(letters2);
+
+        let other_set     = generate(vec![('3', '3'), ('6', '6')]);
+        let other_letters = generate(vec![]);
+
+        assert_eq!(set1, other_set);
+        assert_eq!(letters1, other_letters);
     }
 }
