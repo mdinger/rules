@@ -186,13 +186,13 @@ mod test {
     }
     #[test]
     fn set_union() {
-        let mut set1 = generate(vec![('1', '4'), ('5', '6')]);
-        let set2 =     generate(vec![('0', '5'), ('8', '9')]);
+        let set1 = generate(vec![('1', '4'), ('5', '6')]);
+        let set2 = generate(vec![('0', '5'), ('8', '9')]);
 
-        set1.union(set2);
+        let union = set1.union(&set2);
 
         let other = generate(vec![('0', '6'), ('8', '9')]);
-        assert_eq!(set1, other);
+        assert_eq!(union, other);
     }
     #[test]
     fn remove_partial_overlap() {
@@ -243,94 +243,81 @@ mod test {
     }
     #[test]
     fn set_difference() {
-        let mut set1 = generate(vec![('2', '7')]);
-        let set2     = generate(vec![('0', '1'),   // disjoint left
-                                     ('1', '2'),   // partial overlap left
-                                     ('4', '5'),   // subset
-                                     ('7', '8'),   // partial overlap right
-                                     ('9', '9')]); // disjoint right
-        let mut letters1 = generate(vec![('c', 'e')]);
-        let     letters2 = generate(vec![('a', 'g')]); // superset
+        let set1 = generate(vec![('2', '7')]);
+        let set2 = generate(vec![('0', '1'),   // disjoint left
+                                 ('1', '2'),   // partial overlap left
+                                 ('4', '5'),   // subset
+                                 ('7', '8'),   // partial overlap right
+                                 ('9', '9')]); // disjoint right
+        let letters1 = generate(vec![('c', 'e')]);
+        let letters2 = generate(vec![('a', 'g')]); // superset
 
-        set1.difference(set2);
-        letters1.difference(letters2);
+        let difference_set     = set1.difference(&set2);
+        let difference_letters = letters1.difference(&letters2);
 
         let other_set     = generate(vec![('3', '3'), ('6', '6')]);
         let other_letters = generate(vec![]);
 
-        assert_eq!(set1, other_set);
-        assert_eq!(letters1, other_letters);
+        assert_eq!(difference_set, other_set);
+        assert_eq!(difference_letters, other_letters);
     }
     #[test]
     fn set_intersection_partial_overlap() {
-        let mut set_left  = generate(vec![('2', '7')]);
-        let partial_left  = generate(vec![('0', '3')]);
+        let set   = generate(vec![('2', '7')]);
+        let left  = generate(vec![('0', '3')]);
+        let right = generate(vec![('6', '8')]);
 
-        let mut set_right = generate(vec![('2', '7')]);
-        let partial_right = generate(vec![('6', '8')]);
-
-        set_left.intersection(partial_left);
-        set_right.intersection(partial_right);
+        let intersection_left  = set.intersection(&left);
+        let intersection_right = set.intersection(&right);
 
         let other_left  = generate(vec![('2', '3')]);
         let other_right = generate(vec![('6', '7')]);
 
-        assert_eq!(set_left, other_left);
-        assert_eq!(set_right, other_right);
+        assert_eq!(intersection_left, other_left);
+        assert_eq!(intersection_right, other_right);
     }
     #[test]
     fn set_intersection_subset() {
-        let mut set_subset = generate(vec![('2', '7')]);
-        let subset         = generate(vec![('3', '6')]);
+        let set = generate(vec![('2', '7')]);
 
-        let mut set_left = generate(vec![('2', '7')]);
-        let exact_left   = generate(vec![('2', '6')]);
+        let subset      = generate(vec![('3', '6')]);
+        let exact_left  = generate(vec![('2', '6')]);
+        let exact_right = generate(vec![('3', '7')]);
 
-        let mut set_right = generate(vec![('2', '7')]);
-        let exact_right   = generate(vec![('3', '7')]);
+        let intersection_subset = set.intersection(&subset);
+        let intersection_left   = set.intersection(&exact_left);
+        let intersection_right  = set.intersection(&exact_right);
+        let intersection_both   = set.intersection(&set);
 
-        let mut set_both = generate(vec![('2', '7')]);
-        let exact_both   = generate(vec![('2', '7')]);
-
-        set_subset.intersection(subset);
-        set_left.intersection(exact_left);
-        set_right.intersection(exact_right);
-        set_both.intersection(exact_both);
-
-        let other_subset = generate(vec![('3', '6')]);
-        let other_left   = generate(vec![('2', '6')]);
-        let other_right  = generate(vec![('3', '7')]);
-        let other_both   = generate(vec![('2', '7')]);
-
-        assert_eq!(set_subset, other_subset);
-        assert_eq!(set_left, other_left);
-        assert_eq!(set_right, other_right);
-        assert_eq!(set_both, other_both);
+        assert_eq!(intersection_subset, subset);
+        assert_eq!(intersection_left, exact_left);
+        assert_eq!(intersection_right, exact_right);
+        assert_eq!(intersection_both, set);
     }
     #[test]
     fn set_intersection_superset() {
-        let mut set  = generate(vec![('2', '7')]);
+        let set      = generate(vec![('2', '7')]);
         let superset = generate(vec![('1', '8')]);
 
-        set.intersection(superset);
+        let intersection = set.intersection(&superset);
 
         let other = generate(vec![('2', '7')]);
-        assert_eq!(set, other);
+        assert_eq!(intersection, other);
     }
     #[test]
     fn set_intersection_disjoint() {
-        let mut set_low  = generate(vec![('3', '4')]);
-        let mut set_high = generate(vec![('3', '4')]);
+        let set = generate(vec![('3', '4')]);
+
         let low  = generate(vec![('1', '2')]);
         let high = generate(vec![('5', '6')]);
 
-        set_low.intersection(low);
-        set_high.intersection(high);
+        let intersection_low  = set.intersection(&low);
+        let intersection_high = set.intersection(&high);
 
         let other_low  = generate(vec![]);
         let other_high = generate(vec![]);
 
-        assert_eq!(set_low, other_low);
-        assert_eq!(set_high, other_high);
+        assert_eq!(intersection_low, other_low);
+        assert_eq!(intersection_high, other_high);
     }
 }
