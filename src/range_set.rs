@@ -53,12 +53,12 @@ impl Set {
                 else if min_val > min && min_val <= max && max_val > max { min_val = min }
                 // value is entirely contained between min and max. Insert original
                 // into new array because new is a subset.
-                else if min_val > min && max_val < max {
-                    ret.insert(Range(min, max)); 
+                else if min_val >= min && max_val <= max {
+                    ret.insert(Range(min, max));
                     subset = true;
                 }
                 // value is a superset to the current so don't add current.
-                else if min_val <= min && max_val >= max {}
+                else if min_val < min && max_val > max {}
                 // value is disjoint with current so add current.
                 else { ret.insert(Range(min, max)); }
             }
@@ -133,10 +133,17 @@ mod test {
     }
     #[test]
     fn insert_subset() {
-        let set   = generate(vec![('1', '5'), ('2', '3')]);
+        let set1 = generate(vec![('1', '5'), ('2', '3')]); // Complete overlap.
+        let set2 = generate(vec![('1', '5'), ('1', '3')]); // Left is exact.
+        let set3 = generate(vec![('1', '5'), ('2', '5')]); // Right is exact.
+        let set4 = generate(vec![('1', '5'), ('1', '5')]); // Both are exact.
+
         let other = generate(vec![('1', '5')]);
 
-        assert_eq!(other, set);
+        assert_eq!(set1, other);
+        assert_eq!(set2, other);
+        assert_eq!(set3, other);
+        assert_eq!(set4, other);
     }
     #[test]
     fn insert_superset() {
