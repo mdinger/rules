@@ -101,18 +101,35 @@ impl Set {
 
         *self = Set(ret)
     }
-    pub fn union(&mut self, value: Self) {
-        for x in value.0 { self.insert(x) }
-    }
-    // Intersection of `A` & `B` is `A - (A - B)`.
-    pub fn intersection(&mut self, value: Self) {
-        let mut diff = self.clone();
-        diff.difference(value);
+    // 123 + 345 = 12345.
+    pub fn union(&self, value: &Self) -> Self {
+        let mut ret = self.clone();
 
-        self.difference(diff);
+        // Loop over the btreeset of Range(char, char).
+        for &x in &value.0 { ret.insert(x) }
+
+        ret
     }
-    pub fn difference(&mut self, value: Self) {
-        for x in value.0 { self.remove(x) }
+    // Intersection of `A` & `B` is `A - (A - B)`: 123 & 345 = 3.
+    pub fn intersection(&self, value: &Self) -> Self {
+        let diff = self.difference(value);
+
+        self.difference(&diff)
+    }
+    // 123 - 345 = 12.
+    pub fn difference(&self, value: &Self) -> Self {
+        let mut ret = self.clone();
+
+        for &x in &value.0 { ret.remove(x) }
+
+        ret
+    }
+    // `A` ^ `B` is `(A + B) - (A & B)`: 123 ^ 345 = 1245.
+    pub fn symmetric_difference(&self, value: &Self) -> Self {
+        let union = self.union(value);
+        let intersection = self.intersection(value);
+
+        union.difference(&intersection)
     }
 }
 
