@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::fmt::{self, Display};
 use parse::NextPrev;
 
-#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Range(pub char, pub char);
 
 impl fmt::Display for Range {
