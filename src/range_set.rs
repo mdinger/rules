@@ -81,9 +81,9 @@ impl Set {
             // Loop over set inserting whatever doesn't intersect.
             for &Range(min, max) in &*set {
                 // value overlaps at the beginning.
-                if min_val < min && max_val >= min && max_val < max { ret.insert(Range(max_val.next(), max)); }
+                if min_val <= min && max_val >= min && max_val < max { ret.insert(Range(max_val.next(), max)); }
                 // value overlaps at the end.
-                else if min_val > min && min_val <= max && max_val > max { ret.insert(Range(min, min_val.prev())); }
+                else if min_val > min && min_val <= max && max_val >= max { ret.insert(Range(min, min_val.prev())); }
                 // value is entirely contained between min and max. Split set
                 // into two pieces.
                 else if min_val > min && max_val < max {
@@ -163,16 +163,24 @@ mod test {
     #[test]
     fn remove_partial_overlap() {
         let mut set1 = generate(vec![('5', '9')]);
-        let mut set2 = generate(vec![('2', '6')]);
+        set1.remove(Range('3', '6')); // beginnings different.
 
-        set1.remove(Range('3', '6'));
-        set2.remove(Range('5', '9'));
+        let mut set2 = generate(vec![('5', '9')]);
+        set2.remove(Range('5', '6')); // beginnings same.
 
-        let other1 = generate(vec![('7', '9')]);
-        let other2 = generate(vec![('2', '4')]);
+        let mut set3 = generate(vec![('2', '6')]);
+        set3.remove(Range('5', '9')); // end different.
 
-        assert_eq!(set1, other1);
-        assert_eq!(set2, other2);
+        let mut set4 = generate(vec![('2', '6')]);
+        set4.remove(Range('5', '6')); // end same.
+
+        let other12 = generate(vec![('7', '9')]);
+        let other34 = generate(vec![('2', '4')]);
+
+        assert_eq!(set1, other12);
+        assert_eq!(set2, other12);
+        assert_eq!(set3, other34);
+        assert_eq!(set4, other34);
     }
     #[test]
     fn remove_subset() {
