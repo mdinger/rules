@@ -104,6 +104,13 @@ impl Set {
     pub fn union(&mut self, value: Self) {
         for x in value.0 { self.insert(x) }
     }
+    // Intersection of `A` & `B` is `A - (A - B)`.
+    pub fn intersection(&mut self, value: Self) {
+        let mut diff = self.clone();
+        diff.difference(value);
+
+        self.difference(diff);
+    }
     pub fn difference(&mut self, value: Self) {
         for x in value.0 { self.remove(x) }
     }
@@ -236,5 +243,77 @@ mod test {
 
         assert_eq!(set1, other_set);
         assert_eq!(letters1, other_letters);
+    }
+    #[test]
+    fn set_intersection_partial_overlap() {
+        let mut set_left  = generate(vec![('2', '7')]);
+        let partial_left  = generate(vec![('0', '3')]);
+
+        let mut set_right = generate(vec![('2', '7')]);
+        let partial_right = generate(vec![('6', '8')]);
+
+        set_left.intersection(partial_left);
+        set_right.intersection(partial_right);
+
+        let other_left  = generate(vec![('2', '3')]);
+        let other_right = generate(vec![('6', '7')]);
+
+        assert_eq!(set_left, other_left);
+        assert_eq!(set_right, other_right);
+    }
+    #[test]
+    fn set_intersection_subset() {
+        let mut set_subset = generate(vec![('2', '7')]);
+        let subset         = generate(vec![('3', '6')]);
+
+        let mut set_left = generate(vec![('2', '7')]);
+        let exact_left   = generate(vec![('2', '6')]);
+
+        let mut set_right = generate(vec![('2', '7')]);
+        let exact_right   = generate(vec![('3', '7')]);
+
+        let mut set_both = generate(vec![('2', '7')]);
+        let exact_both   = generate(vec![('2', '7')]);
+
+        set_subset.intersection(subset);
+        set_left.intersection(exact_left);
+        set_right.intersection(exact_right);
+        set_both.intersection(exact_both);
+
+        let other_subset = generate(vec![('3', '6')]);
+        let other_left   = generate(vec![('2', '6')]);
+        let other_right  = generate(vec![('3', '7')]);
+        let other_both   = generate(vec![('2', '7')]);
+
+        assert_eq!(set_subset, other_subset);
+        assert_eq!(set_left, other_left);
+        assert_eq!(set_right, other_right);
+        assert_eq!(set_both, other_both);
+    }
+    #[test]
+    fn set_intersection_superset() {
+        let mut set  = generate(vec![('2', '7')]);
+        let superset = generate(vec![('1', '8')]);
+
+        set.intersection(superset);
+
+        let other = generate(vec![('2', '7')]);
+        assert_eq!(set, other);
+    }
+    #[test]
+    fn set_intersection_disjoint() {
+        let mut set_low  = generate(vec![('3', '4')]);
+        let mut set_high = generate(vec![('3', '4')]);
+        let low  = generate(vec![('1', '2')]);
+        let high = generate(vec![('5', '6')]);
+
+        set_low.intersection(low);
+        set_high.intersection(high);
+
+        let other_low  = generate(vec![]);
+        let other_high = generate(vec![]);
+
+        assert_eq!(set_low, other_low);
+        assert_eq!(set_high, other_high);
     }
 }
