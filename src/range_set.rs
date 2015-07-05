@@ -1,5 +1,17 @@
 #![allow(dead_code)]
 
+//! A set library to aid character set manipulation.
+//!
+//! `range_set` aims to make it easier to handle set manipulation for characters
+//! over ranges. For example, a unicode library may expose character ranges such
+//! as `('0', '9')` as a sequence of digits. If I was already later state I would
+//! like to add the sequence of digits: `('1', '3')`, it would consider them as
+//! distinct and store both. This is a nuisance. It should recognize that `1-3`
+//! is encased inside `0-9` and leave it as is.
+//!
+//! It provides the standard set operations: union, intersection, difference,
+//! and symmetric difference.
+
 use std::collections::BTreeSet;
 use std::fmt::{self, Display};
 use parse::NextPrev;
