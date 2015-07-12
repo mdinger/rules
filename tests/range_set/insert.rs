@@ -2,14 +2,13 @@ use super::generate;
 
 #[test]
 fn partial_overlap() {
-    let left  = generate(vec![('3', '5'), ('4', '6')]);
-    let right = generate(vec![('3', '5'), ('1', '4')]);
+    let left  = generate(vec![('4', '6'), ('3', '4')]);
+    let right = generate(vec![('3', '4'), ('4', '6')]);
 
-    let other_left  = generate(vec![('3', '6')]);
-    let other_right = generate(vec![('1', '5')]);
+    let other  = generate(vec![('3', '6')]);
 
-    assert_eq!(left, other_left);
-    assert_eq!(right, other_right);
+    assert_eq!(left, other);
+    assert_eq!(right, other);
 }
 #[test]
 fn subset() {
@@ -33,10 +32,9 @@ fn superset() {
     assert_eq!(other, set);
 }
 #[test]
-// Useless test but added for completeness.
 fn disjoint() {
     let set   = generate(vec![('2', '4'), ('6', '8')]);
-    let other = generate(vec![('2', '4'), ('6', '8')]);
+    let other = generate(vec![('6', '8'), ('2', '4')]);
 
     assert_eq!(other, set);
 }
