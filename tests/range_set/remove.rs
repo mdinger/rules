@@ -3,34 +3,39 @@ use rules::range_set::Range;
 
 #[test]
 fn partial_overlap() {
-    let mut set1 = generate(vec![('5', '9')]);
-    set1.remove(Range('3', '6')); // beginnings different.
+    let mut left  = generate(vec![('4', '7')]);
+    let mut right = left.clone();
 
-    let mut set2 = generate(vec![('5', '9')]);
-    set2.remove(Range('5', '6')); // beginnings same.
+    left.remove(Range('3', '5'));
+    right.remove(Range('6', '9'));
 
-    let mut set3 = generate(vec![('2', '6')]);
-    set3.remove(Range('5', '9')); // end different.
+    let other_left  = generate(vec![('6', '7')]);
+    let other_right = generate(vec![('4', '5')]);
 
-    let mut set4 = generate(vec![('2', '6')]);
-    set4.remove(Range('5', '6')); // end same.
-
-    let other12 = generate(vec![('7', '9')]);
-    let other34 = generate(vec![('2', '4')]);
-
-    assert_eq!(set1, other12);
-    assert_eq!(set2, other12);
-    assert_eq!(set3, other34);
-    assert_eq!(set4, other34);
+    assert_eq!(left,  other_left);
+    assert_eq!(right, other_right);
 }
 #[test]
 fn subset() {
-    let mut set = generate(vec![('1', '9')]);
-    set.remove(Range('3', '6'));
+    let mut inner  = generate(vec![('3', '8')]);
+    let mut left   = inner.clone();
+    let mut right  = inner.clone();
+    let mut both   = inner.clone();
+    
+    inner.remove(Range('4', '7'));
+    left .remove(Range('3', '7'));
+    right.remove(Range('4', '8'));
+    both .remove(Range('3', '8'));
 
-    let other = generate(vec![('1', '2'), ('7', '9')]);
+    let other_inner = generate(vec![('3', '3'), ('8', '8')]);
+    let other_left  = generate(vec![('8', '8')]);
+    let other_right = generate(vec![('3', '3')]);
+    let other_both  = generate(vec![]);
 
-    assert_eq!(set, other);
+    assert_eq!(inner, other_inner);
+    assert_eq!(left, other_left);
+    assert_eq!(right, other_right);
+    assert_eq!(both, other_both);
 }
 #[test]
 fn superset() {
@@ -42,9 +47,10 @@ fn superset() {
 }
 #[test]
 fn disjoint() {
-    let mut set = generate(vec![('2', '3')]);
+    let mut set = generate(vec![('3', '4')]);
     set.remove(Range('6', '8'));
+    set.remove(Range('1', '2'));
 
-    let other = generate(vec![('2', '3')]);
+    let other = generate(vec![('3', '4')]);
     assert_eq!(set, other);
 }
