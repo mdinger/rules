@@ -1,22 +1,53 @@
 use super::generate;
 
 #[test]
-fn test() {
-    let set1 = generate(vec![('2', '7')]);
-    let set2 = generate(vec![('0', '1'),   // disjoint left
-                             ('1', '2'),   // partial overlap left
-                             ('4', '5'),   // subset
-                             ('7', '8'),   // partial overlap right
-                             ('9', '9')]); // disjoint right
-    let letters1 = generate(vec![('c', 'e')]);
-    let letters2 = generate(vec![('a', 'g')]); // superset
+fn partial_overlap() {
+    let set   = generate(vec![('2', '7')]);
 
-    let difference_set     = set1.difference(&set2);
-    let difference_letters = letters1.difference(&letters2);
+    let left  = generate(vec![('0', '3')]);
+    let right = generate(vec![('6', '8')]);
 
-    let other_set     = generate(vec![('3', '3'), ('6', '6')]);
-    let other_letters = generate(vec![]);
+    let other_left  = generate(vec![('4', '7')]);
+    let other_right = generate(vec![('2', '5')]);
 
-    assert_eq!(difference_set, other_set);
-    assert_eq!(difference_letters, other_letters);
+    assert_eq!(set.difference(&left), other_left);
+    assert_eq!(set.difference(&right), other_right);
+}
+#[test]
+fn subset() {
+    let set = generate(vec![('2', '7')]);
+
+    let subset      = generate(vec![('3', '6')]);
+    let exact_left  = generate(vec![('2', '6')]);
+    let exact_right = generate(vec![('3', '7')]);
+
+    let other_subset = generate(vec![('2', '2'), ('7', '7')]);
+    let other_left   = generate(vec![('7', '7')]);
+    let other_right  = generate(vec![('2', '2')]);
+    let empty        = generate(vec![]);
+
+    assert_eq!(set.difference(&subset), other_subset);
+    assert_eq!(set.difference(&exact_left), other_left);
+    assert_eq!(set.difference(&exact_right), other_right);
+    assert_eq!(set.difference(&set), empty);
+}
+#[test]
+fn superset() {
+    let set      = generate(vec![('2', '7')]);
+    let superset = generate(vec![('1', '8')]);
+
+    let empty = generate(vec![]);
+
+    assert_eq!(set.difference(&superset), empty);
+}
+
+#[test]
+fn disjoint() {
+    let set = generate(vec![('3', '4')]);
+
+    let left  = generate(vec![('1', '2')]);
+    let right = generate(vec![('5', '6')]);
+
+    assert_eq!(set.difference(&left), set);
+    assert_eq!(set.difference(&right), set);
 }
