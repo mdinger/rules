@@ -55,14 +55,14 @@ impl Set {
             let Range(mut min_val, mut max_val) = value;
             if min_val > max_val { panic!("First value cannot be greater than the second.") }
 
-            // Loop over set adding old disjoint pieces and supersets back.
-            // When partially overlapped, expand value to the union. At the
+            // Loop over set adding old disjoint pieces and supersets back. When partially
+            // overlapped or disjoint without a gap, expand value to the union. At the
             // end, insert union after it has been fully expanded.
             for &Range(min, max) in &*set {
-                // value overlaps at the beginning.
-                if min_val < min && max_val >= min && max_val < max { max_val = max }
-                // value overlaps at the end.
-                else if min_val > min && min_val <= max && max_val > max { min_val = min }
+                // value overlaps at the beginning or disjoint w/o gap on the low side.
+                if min_val < min && max_val >= min.prev() && max_val < max { max_val = max }
+                // value overlaps at the end or disjoin w/o gap on the high side.
+                else if min_val > min && min_val <= max.next() && max_val > max { min_val = min }
                 // value is entirely contained between min and max. Insert original
                 // into new array because new is a subset.
                 else if min_val >= min && max_val <= max {
@@ -71,7 +71,7 @@ impl Set {
                 }
                 // value is a superset to the current so don't add current.
                 else if min_val < min && max_val > max {}
-                // value is disjoint with current so add current.
+                // value is disjoint with current and has a gap. Add current.
                 else { ret.insert(Range(min, max)); }
             }
 

@@ -41,6 +41,15 @@ fn disjoint() {
     assert_eq!(other, set);
 }
 #[test]
+fn disjoint_extend() {
+    let left  = generate(vec![('5', '8'), ('2', '4')]);
+    let right = generate(vec![('2', '4'), ('5', '8')]);
+    let other = generate(vec![('2', '8')]);
+
+    assert_eq!(other, left);
+    assert_eq!(other, right);
+}
+#[test]
 #[should_panic]
 fn panic_on_decreasing_order() {
     generate(vec![('5', '3')]);
