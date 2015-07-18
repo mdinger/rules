@@ -1,12 +1,13 @@
 use parse::Membership::*;
 use parse::Faction::*;
-use std::collections::{BTreeSet, VecDeque};
+use range_set::{Range, Set};
+use std::collections::VecDeque;
 use std::{char, fmt};
+use std::convert::Into;
 use std::result;
 // Unicode tables for character classes are defined in libunicode
 use unicode::regex::{PERLD, PERLS, PERLW};
 
-pub type CharSet = BTreeSet<Ast>;
 pub type Result<T> = result::Result<T, ParseError>;
 
 #[derive(Debug)]
@@ -45,37 +46,45 @@ impl fmt::Display for ParseError {
     }
 }
 
-pub trait ToCharSet {
-    fn to_char_set(&self) -> CharSet;
-}
+impl Into<Set> for &'static [(char, char)] {
+    fn into(self) -> Set {
+        let mut set = Set::new();
 
-impl ToCharSet for &'static [(char, char)] {
-    fn to_char_set(&self) -> CharSet {
-        let mut set = BTreeSet::new();
-
-        for &(open, close) in *self {
-            set.insert(Ast::Range(open, close));
+        for &(open, close) in self {
+            set.insert(Range(open, close));
         }
 
         set
     }
+
 }
 
-impl ToCharSet for char {
-    fn to_char_set(&self) -> CharSet {
-        let mut set = BTreeSet::new();
-        set.insert(Ast::Char(*self));
+impl Into<Set> for char {
+    fn into(self) -> Set {
+        let mut set = Set::new();
+        set.insert(Range(self, self));
 
         set
     }
 }
 
-impl ToCharSet for Vec<Ast> {
-    fn to_char_set(&self) -> CharSet {
-        let vec = self.clone();
-        let set: CharSet = vec.into_iter().collect();
+impl Into<Ast> for Vec<Ast> {
+    fn into(self) -> Ast {
+        let (mut inclusive, mut exclusive) = (Set::new(), Set::new());
 
-        set
+        for ast in self {
+            match ast {
+                Ast::Char(c) => inclusive.insert(Range(c, c)),
+                Ast::Range(range) => inclusive.insert(range),
+                Ast::Set(set, Inclusive) => inclusive = inclusive.union(&set),
+                Ast::Set(set, Exclusive) => exclusive = exclusive.union(&set),
+                _ => unreachable!(),
+            }
+        }
+
+        if exclusive.is_empty() { Ast::Set(inclusive, Inclusive) }
+        else { Op::Union.apply(Ast::Set(inclusive, Inclusive),
+                               Ast::Set(exclusive, Exclusive)) }
     }
 }
 
@@ -118,49 +127,13 @@ impl Op {
     // removed beforehand. This will remove new subsets before exiting.
     pub fn apply(&self, left: Ast, right: Ast) -> Ast {
 
-        let applied = match *self {
+        match *self {
             Op::Difference          => self.difference(left, right),
             Op::SymmetricDifference => self.symmetric_difference(left, right),
             Op::Intersection        => self.intersection(left, right),
             Op::Union               => self.union(left, right),
             _ => unimplemented!(),
-        };
-
-        applied.remove_subsets()
-    }
-    // Set ranges can be overlapping or non-overlapping. This is problematic for matching
-    // because very similar sets are considered distinct meaning set operations will
-    // not function properly: range(2,3) + range(2,4) = { range(2,3), range(2,4) }.
-    // This modifies the sets so they don't partially overlap. This will allow
-    // inner sets to be removed later.
-    fn align(&self, left: CharSet, right: CharSet) -> (CharSet, CharSet) {
-        let mut lset = BTreeSet::new();
-        let mut rset = BTreeSet::new();
-
-        for l in &left {
-            for r in &right {
-                let (l_range, r_range) = match (l, r) {
-                    (&Ast::Range(min1, max1), &Ast::Range(min2, max2)) => {
-                        // First overlaps at the beginning.
-                        let l = if min1 < min2 && max1 >= min2 { vec![Ast::Range(min1, min2.prev()),
-                                                                      Ast::Range(min2, max1)] }
-                        // First overlaps at the end.
-                        else if min1 <= max2 && max1 > max2 { vec![Ast::Range(min1, max2),
-                                                                   Ast::Range(max2.next(), max1)] }
-                        // Complete overlap or no overlap.
-                        else { vec![Ast::Range(min1, max1)] };
-
-                        (l, vec![Ast::Range(min2, max2)])
-                    },
-                    _ => unreachable!(),
-                };
-
-                for i in l_range { lset.insert(i); }
-                for j in r_range { rset.insert(j); }
-            }
         }
-
-        (lset, rset)
     }
     // Apply set difference.
     fn difference(&self, left: Ast, right: Ast) -> Ast {
@@ -169,9 +142,7 @@ impl Op {
             (left, Ast::Empty)  => left,
             (Ast::Set(lset, lmem), Ast::Set(rset, rmem)) => {
                 match (lmem, rmem) {
-                    (l, r) if l == r => Ast::Set(lset.difference(&rset)
-                                                     .cloned()
-                                                     .collect(), l),
+                    (l, r) if l == r => Ast::Set(lset.difference(&rset), l),
                     _ => unimplemented!(),
                 }
             },
@@ -185,9 +156,7 @@ impl Op {
             (left, Ast::Empty)  => left,
             (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
                 if lmembership == rmembership {
-                    Ast::Set(lset.symmetric_difference(&rset)
-                                 .cloned()
-                                 .collect(), lmembership)
+                    Ast::Set(lset.symmetric_difference(&rset), lmembership)
                 } else { unimplemented!() }
             },
             _ => unimplemented!(),
@@ -200,9 +169,7 @@ impl Op {
             (_, Ast::Empty)  => Ast::Empty,
             (Ast::Set(lset, lmem), Ast::Set(rset, rmem)) => {
                 match (lmem, rmem) {
-                    (l, r) if l == r => Ast::Set(lset.intersection(&rset)
-                                                     .cloned()
-                                                     .collect(), l),
+                    (l, r) if l == r => Ast::Set(lset.intersection(&rset), l),
                     _ => unimplemented!(),
                 }
             },
@@ -215,25 +182,14 @@ impl Op {
             (Ast::Empty, right) => right,
             (left , Ast::Empty) => left,
             (Ast::Set(lset, lmembership), Ast::Set(rset, rmembership)) => {
-                let (lset, rset) = self.align(lset, rset);
                 // Unifying sets with opposite membership isn't obvious. If
                 // -3 is 3 Exclusive and 3 is Inclusive then `-3 + 3` is a
                 // union which is identical to `-(3 - 3)` = `-()`. Similarly,
                 // `-1 + 7` = `-(1 - 7)` = `-1`.
-                //
-                // However, a `Range(x,y)` may appear inside a `Range(z,t)`
-                // which a straight union wouldn't realize. Some manual prep
-                // must be done.
                 match (lmembership, rmembership) {
-                    (lmem, rmem) if lmem == rmem => Ast::Set(lset.union(&rset)
-                                                                 .cloned()
-                                                                 .collect(), lmem),
-                    (lmem @ Exclusive, _) => Ast::Set(lset.difference(&rset)
-                                                          .cloned()
-                                                          .collect(), lmem),
-                    (Inclusive, rmem)     => Ast::Set(rset.difference(&lset)
-                                                          .cloned()
-                                                          .collect(), rmem),
+                    (x, y) if x == y   => Ast::Set(lset.union(&rset), x),
+                    (x @ Exclusive, _) => Ast::Set(lset.difference(&rset), x),
+                    (Inclusive, y)     => Ast::Set(rset.difference(&lset), y),
                 }
             },
             _ => unreachable!(),
@@ -260,126 +216,14 @@ pub enum Ast {
     // Unicode uses (open, close) pairs to denote range. A set of these is
     // more efficient than specifying every character. A set may include a
     // few dozen pairs instead of 100s/1000s.
-    Range(char, char),              // (open, close) range for character sets
-    Set(CharSet, Membership),       // [1..5] or [68\w] inside a `<>`
+    Range(Range),                   // (open, close) range for character sets
+    Set(Set, Membership),           // [1..5 \d] inside a `<>`
 }
 
 impl Ast {
-    // While a class is being collapsed, a Set may include Sets inside it with
-    // varying memberships. This flattens a Set into one single layer, applying
-    // a union to sets when their membership varies.
-    pub fn flatten(self) -> Self {
-        let mut inclusive: CharSet = BTreeSet::new();
-        let mut exclusive: CharSet = BTreeSet::new();
-
-        if let Ast::Set(set_outer, membership_outer) = self {
-            for i in set_outer {
-                if let Ast::Set(set_inner, membership_inner) = i {
-                    for j in set_inner {
-                        if membership_inner == Inclusive { inclusive.insert(j); }
-                        else { exclusive.insert(j); }
-                    }
-                } else {
-                    if membership_outer == Inclusive { inclusive.insert(i); }
-                    else { exclusive.insert(i); }
-                }
-            }
-
-            // A union applied to an empty exclusion would include everything.
-            // Check for empty sets to handle manually.
-            //
-            // They may still have `Char(c)` inside. Convert to `Range(c,c)` for
-            // easier processing. Remove subsets before applying an op.
-            //
-            // Subset may be of form: `<[0..3 1..3]>` and a union should be applied.
-            if exclusive.is_empty() { Ast::Set(inclusive, Inclusive).strip_char()
-                                                                    .remove_subsets() }
-            else { Op::Union.apply(Ast::Set(inclusive, Inclusive).strip_char()
-                                                                 .remove_subsets(),
-                                   Ast::Set(exclusive, Exclusive).strip_char()
-                                                                 .remove_subsets()) }
-        } else { self }
-    }
     fn negate(self) -> Self {
         match self {
             Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
-            _ => unreachable!(),
-        }
-    }
-    // A set such as `2..3 + \d` would result in 2 separate ranges being stored:
-    // Range(2,3) and the other which is it's superset. The reason is because
-    // they have different values, they are considered distinct. This removes
-    // subsets.
-    //
-    // BTreeSet seems to be sorted by the first element which is good. This
-    // doesn't have to be O(2).
-    pub fn remove_subsets(self) -> Self {
-        let mut ret: CharSet = BTreeSet::new();
-        let mut first = true;
-        // Filler to appease the compiler.
-        let mut previous = Ast::Empty;
-
-        match self {
-            Ast::Set(set, membership) => {
-                for current in set {
-                    if first {
-                        first = false;
-                        previous = current;
-                    } else {
-                        previous = previous.superset(&current)
-                                           .map_or_else( || { ret.insert(previous);
-                                                              current },
-                                                         |x| x);
-                    }
-                }
-
-                // If passed empty set, the above loop will never run.
-                if !first { ret.insert(previous); }
-                Ast::Set(ret, membership)
-            },
-            ret => ret,
-        }
-    }
-    // Dealing with all variations of `Char(c)` and `Range(a, b)` is complicated.
-    // So all `Char` are stripped out of character classes for easier simplification.
-    pub fn strip_char(self) -> Self {
-        let mut ret = BTreeSet::new();
-
-        if let Ast::Set(set, membership) = self {
-            for i in set {
-                ret.insert(match i {
-                    Ast::Char(c) => Ast::Range(c, c),
-                    x => x,
-                });
-            }
-
-            Ast::Set(ret, membership)
-        } else { self }
-    }
-    // Change all `Range(x, x)` back to `Char(x)` since we've finished set ops.
-    pub fn strip_double_range(self) -> Self {
-        let mut ret = BTreeSet::new();
-
-        if let Ast::Set(set, membership) = self {
-            for i in set {
-                ret.insert(match i {
-                    Ast::Range(x, y) if x == y => Ast::Char(x),
-                    x => x,
-                });
-            }
-
-            Ast::Set(ret, membership)
-        } else { self }
-    }
- 
-    // Returns the superset of the two or None.
-    fn superset(&self, r: &Ast) -> Option<Self> {
-        match (self, r) {
-            (&Ast::Range(min1, max1), &Ast::Range(min2, max2)) => {
-                if      min1 <= min2 && max1 >= max2 { Some(Ast::Range(min1, max1)) }
-                else if min2 <= min1 && max2 >= max1 { Some(Ast::Range(min2, max2)) }
-                else { None }
-            },
             _ => unreachable!(),
         }
     }
@@ -511,20 +355,18 @@ impl Parser {
 
         if !closed { return Err(ParseError::ClassSetMustClose) }
 
-        let set: CharSet = vec.into_iter().collect();
-
-        Ok(Ast::Set(set, Inclusive))
+        Ok(vec.into())
     }
-    // The `a .. b` notation has been parsed. Determine `b` and return an
-    // inclusive `Set` from `a` to `b`.
+    // The `a .. b` notation has been parsed. Determine `b` and return a `Range`
+    // from `a` to `b`.
     fn parse_ellipsis(&mut self, a: char) -> Result<Ast> {
         while self.next() {
             let b = self.cur();
             if !is_whitespace(b) {
                 return match b {
                     ']'  => Err(ParseError::EllipsisCloseNeedsEscape),
-                    '\\' => self.parse_escape().map(|c| Ast::Range(a, c)),
-                    _    => Ok(Ast::Range(a, b)),
+                    '\\' => self.parse_escape().map(|c| Ast::Range(Range(a, c))),
+                    _    => Ok(Ast::Range(Range(a, b))),
                 };
             }
         }
@@ -541,17 +383,17 @@ impl Parser {
     fn parse_escape_set(&mut self) -> Result<Ast> {
         self.parse_escape()
             .map(|c| match c {
-            'd' => Ast::Set(PERLD.to_char_set(), Inclusive),
-            'D' => Ast::Set(PERLD.to_char_set(), Exclusive),
-            'n' => Ast::Set('\n'.to_char_set(), Inclusive),
-            'N' => Ast::Set('\n'.to_char_set(), Exclusive),
-            't' => Ast::Set('\t'.to_char_set(), Inclusive),
-            'T' => Ast::Set('\t'.to_char_set(), Exclusive),
-            's' => Ast::Set(PERLS.to_char_set(), Inclusive),
-            'S' => Ast::Set(PERLS.to_char_set(), Exclusive),
-            'w' => Ast::Set(PERLW.to_char_set(), Inclusive),
-            'W' => Ast::Set(PERLW.to_char_set(), Exclusive),
-            c   => Ast::Set(c.to_char_set(), Inclusive),
+            'd' => Ast::Set(PERLD.into(), Inclusive),
+            'D' => Ast::Set(PERLD.into(), Exclusive),
+            'n' => Ast::Set('\n'.into(), Inclusive),
+            'N' => Ast::Set('\n'.into(), Exclusive),
+            't' => Ast::Set('\t'.into(), Inclusive),
+            'T' => Ast::Set('\t'.into(), Exclusive),
+            's' => Ast::Set(PERLS.into(), Inclusive),
+            'S' => Ast::Set(PERLS.into(), Exclusive),
+            'w' => Ast::Set(PERLW.into(), Inclusive),
+            'W' => Ast::Set(PERLW.into(), Exclusive),
+            c   => Ast::Set(c.into(), Inclusive),
         })
     }
     // Parse the `'hello world'` and `"testing_this"`

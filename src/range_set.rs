@@ -25,7 +25,7 @@ impl fmt::Display for Range {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Set(BTreeSet<Range>);
 
 impl fmt::Display for Set {
@@ -81,6 +81,7 @@ impl Set {
 
         *self = Set(ret);
     }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
     pub fn remove(&mut self, value: Range) {
         let mut ret = BTreeSet::new();
 

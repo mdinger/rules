@@ -40,13 +40,11 @@ impl Collapser {
     // in the future.
     fn collapse_class(&mut self, deque: &mut VecDeque<Ast>) -> Ast {
         let mut left = deque.pop_front()
-                            .unwrap()
-                            .flatten();
+                            .unwrap();
 
         while let Some(op) = deque.pop_front() {
             let right = deque.pop_front()
-                             .unwrap()
-                             .flatten();
+                             .unwrap();
 
             left = match op {
                 Ast::Op(op) => op.apply(left, right),
@@ -59,7 +57,7 @@ impl Collapser {
         if let Ast::Empty = left { panic!("An empty class `<[]>` is not allowed!") }
 
         let mut ret = VecDeque::new();
-        ret.push_front(left.strip_double_range());
+        ret.push_front(left);
 
         Ast::Class(ret)
     }
