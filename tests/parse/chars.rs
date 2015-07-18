@@ -1,7 +1,6 @@
 use rules::unicode::regex::PERLS;
 use rules::parse::Ast::*;
 use rules::parse::Membership::*;
-use rules::parse::ToCharSet;
 
 use super::parse;
 
@@ -28,6 +27,6 @@ fn unicode() {
 }
 #[test]
 fn escapes() {
-    assert_eq!(vec![Set(PERLS.to_char_set(), Inclusive)], parse(r"\s"));
-    assert_eq!(vec![Set(PERLS.to_char_set(), Exclusive)], parse(r"\S"));
+    assert_eq!(vec![Set(PERLS.into(), Inclusive)], parse(r"\s"));
+    assert_eq!(vec![Set(PERLS.into(), Exclusive)], parse(r"\S"));
 }

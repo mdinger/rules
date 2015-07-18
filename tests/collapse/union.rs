@@ -1,6 +1,6 @@
 use rules::parse::Ast::*;
 use rules::parse::Membership::*;
-use rules::parse::ToCharSet;
+use rules::range_set;
 
 use super::{new_deque, simplify};
 
@@ -11,7 +11,7 @@ fn text() {
 #[test]
 fn empty() {
     // Set of chars inside `[]`
-    let set = vec![Char('a')].to_char_set();
+    let set = vec![Char('a')].into();
     // Deque of ops and sets inside `<>`
     let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class denoted by `<[]>`
@@ -21,8 +21,8 @@ fn empty() {
 #[test]
 fn char_class_sets() {
     // Set of chars inside `[]`
-    let set   = vec![Char('a'), Char('b'), Char('c')].to_char_set();
-    let empty = vec![].to_char_set();
+    let set   = vec![Char('a'), Char('b'), Char('c')].into();
+    let empty = vec![].into();
     // Deque of ops and sets inside `<>`
     let deque      = new_deque(vec![Set(set, Inclusive)]);
     let everything = new_deque(vec![Set(empty, Exclusive)]);
@@ -47,7 +47,7 @@ fn char_class_set_subset_partial_overlap() {
 #[test]
 fn disjoint_char_class_sets() {
     // Set of chars inside `[]`
-    let set   = vec![Range('0', '1'), Range('2', '9')].to_char_set();
+    let set   = vec![Range(range_set::Range('0', '1')), Range(range_set::Range('2', '9'))].into();
     // Deque of ops and sets inside `<>`
     let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class which is the union of all subsets.
@@ -56,7 +56,7 @@ fn disjoint_char_class_sets() {
 #[test]
 fn char_class_subset() {
     // Set of chars inside `[]`
-    let set   = vec![Range('0', '9')].to_char_set();
+    let set   = vec![Range(range_set::Range('0', '9'))].into();
     // Deque of ops and sets inside `<>`
     let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class which is the union of all subsets.

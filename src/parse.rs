@@ -56,13 +56,31 @@ impl Into<Set> for &'static [(char, char)] {
 
         set
     }
-
 }
 
 impl Into<Set> for char {
     fn into(self) -> Set {
         let mut set = Set::new();
         set.insert(Range(self, self));
+
+        set
+    }
+}
+
+// A set may be composed of Chars and Ranges but other types
+// have no meaning here. These are the only applicable types.
+impl Into<Set> for Vec<Ast> {
+    fn into(self) -> Set {
+        let mut set = Set::new();
+
+        for ast in self {
+            match ast {
+                Ast::Char(c)      => set.insert(Range(c, c)),
+                Ast::Range(range) => set.insert(range),
+                x => { println!("x: {:?}", x);
+                       unreachable!() },
+            }
+        }
 
         set
     }

@@ -1,13 +1,13 @@
 use rules::parse::Ast::*;
 use rules::parse::Membership::*;
-use rules::parse::ToCharSet;
+use rules::range_set;
 
 use super::{new_deque, simplify};
 
 #[test]
 fn char_class() {
     // Set of chars inside `[]`
-    let set = vec![Char('a')].to_char_set();
+    let set: range_set::Set = vec![Char('a')].into();
     // Deque of ops and sets inside `<>`
     let deque_ex = new_deque(vec![Set(set.clone(), Exclusive)]);
     let deque_in = new_deque(vec![Set(set, Inclusive)]);
