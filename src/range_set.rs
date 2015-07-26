@@ -58,6 +58,12 @@ impl Set {
             // Loop over set adding old disjoint pieces and supersets back. When partially
             // overlapped or disjoint without a gap, expand value to the union. At the
             // end, insert union after it has been fully expanded.
+            //
+            // It is important that each branch consider all cases which lead to a specific
+            // modification. For example, expanding the low side isn't checking for only
+            // partial overlap, it's checking all cases which result in *only* the left
+            // side expanding. Previous attempts, for example, checked for partial overlap
+            // as distinct from subsets/supersets. The result was missing many edge cases.
             for &Range(min, max) in &*set {
                 // value overlaps at the beginning or disjoint w/o gap on the low side.
                 if min_val < min && max_val >= min.prev() && max_val <= max { max_val = max }
