@@ -24,9 +24,9 @@ impl Collapser {
         loop {
             let a = self.cur();
             vec.push(match a {
-                Ast::Char(_)      => a,
+                Ast::Char(_)          => a,
                 Ast::Class(mut deque) => self.collapse_class(&mut deque),
-                _ => panic!("incomplete"),
+                _ => unimplemented!(),
             });
 
             if !self.next() { break }

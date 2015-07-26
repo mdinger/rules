@@ -10,7 +10,6 @@ fn partial_overlap() {
     assert_eq!(left.union(&right), other);
     assert_eq!(right.union(&left), other);
 }
-
 #[test]
 fn subset() {
     let set = generate(vec![('1', '5')]);
@@ -27,7 +26,6 @@ fn subset() {
     assert_eq!(set.union(&right), other);
     assert_eq!(set.union(&both), other);
 }
-
 #[test]
 fn superset() {
     let set      = generate(vec![('3', '5')]);
@@ -36,7 +34,6 @@ fn superset() {
     assert_eq!(set.union(&superset), superset);
     assert_eq!(superset.union(&set), superset);
 }
-
 #[test]
 fn disjoint() {
     let left  = generate(vec![('2', '4')]);
@@ -47,7 +44,6 @@ fn disjoint() {
     assert_eq!(left.union(&right), other);
     assert_eq!(right.union(&left), other);
 }
-
 #[test]
 fn disjoint_extend() {
     let left  = generate(vec![('2', '4')]);

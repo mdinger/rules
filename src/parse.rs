@@ -259,7 +259,7 @@ struct Parser {
 }
 
 impl Parser {
-    fn cur(&self)  -> char { self.chars[self.pos] }
+    fn cur(&self) -> char { self.chars[self.pos] }
     // True if next finds another char.
     fn next(&mut self) -> bool {
         self.pos += 1;
