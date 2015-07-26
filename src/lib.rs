@@ -40,6 +40,32 @@
 //! it\'s\ my\ birthday // Matches `it's my birthday`.
 //! ```
 //!
+//! # Chevrons: `<>`
+//!
+//! Chevrons are considered a metacharacter grouping operator whose behaviour
+//! changes depending on the first character found inside. The behavior for
+//! each different character is:
+//!
+//! First character | Example | Result
+//! ----------------|---------|-------
+//! Whitespace | `< big small >` | Alternative quotes matches `[ 'big' | 'small' ]`
+//! alphabetic | `<alpha>` | Named character class which captures
+//! `?` | `<?before foo>` | A positive zero width assertion
+//! `!` | `<!before foo>` | A negative zero width assertion
+//! `[` | `<[ ab ]>` | A character class matches `[ 'a' | 'b' ]`
+//! `-` | `<-[a] + [b]>` | Negated character class: `[ab]` negated
+//! `+` | `<+ [a] >` | Doesn't modify the class.
+//!
+//! # Lookaround
+//!
+//! * lookahead - `foo <?after bar>` matches `foo` in `foobar`
+//! * negative lookahead - `foo <!after bar>` matches `foo` in `foobaz`
+//! * lookbehind - `<?before foo> bar` matches `bar` in `foobar`
+//! * negative lookbehind - `<!before foo> bar` matches `bar` in `sushibar`
+//!
+//! An example with both:
+//! `<?before foo> bar <?after baz>`  matches `bar` in `foobarbaz`
+//!
 //! # Set operators
 //!
 //! These operators can be applied to groups which will be analyzed later:
