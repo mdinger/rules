@@ -411,7 +411,7 @@ impl Parser {
             'S' => Ast::Set(PERLS.into(), Exclusive),
             'w' => Ast::Set(PERLW.into(), Inclusive),
             'W' => Ast::Set(PERLW.into(), Exclusive),
-            c   => Ast::Set(c.into(), Inclusive),
+            c   => Ast::Char(c),
         })
     }
     // Parse the `'hello world'` and `"testing_this"`

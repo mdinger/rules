@@ -1,55 +1,53 @@
-use parse::{self, Ast};//, Membership, Op};
+use parse::{self, Ast};
 use collapse;
-//use std::collections::RingBuf;
 
-struct Regex {
-    ast: Ast,
-    pos: usize,
+#[derive(Debug)]
+pub struct Regex {
+    ast: Vec<Ast>,
+    chars: Vec<char>,
+    pos_ast: usize,
+    pos_char: usize,
 }
 
 impl Regex {
-    pub fn new(s: &str) {
+    fn ast_contains(&self) -> bool {
+        let cur = self.cur_char();
+
+        match self.cur_ast() {
+            Ast::Char(c) => c == cur,
+            Ast::Literal(_) => unimplemented!(),
+            _ => unimplemented!(),
+        }
+    }
+    fn cur_ast(&self) -> Ast { self.ast[self.pos_ast].clone() }
+    fn cur_char(&self) -> char { self.chars[self.pos_char] }
+    pub fn new(s: &str) -> Regex {
         let vec = parse::parse(s).unwrap();
-        collapse::collapse(vec);
+        let vec = collapse::collapse(vec);
         
-        
-        //self.simplify(&mut vec)
+        Regex { ast: vec, chars: vec![], pos_ast: 0, pos_char: 0 }
     }
-    // A regex may contain character classes which may contain set ops such
-    // as `Intersection`. Character classes will have the ops applied and pushed
-    // into a new vector. Everything else will be translated perfectly.
-    /*fn simplify(&self, class: Vec<Ast>) -> Vec<Ast> {
-        match
-        let mut compact = vec![];
+    fn next_ast(&mut self) -> bool {
+        self.pos_ast += 1;
 
-        for ast in class.iter_mut() {
-            match ast {
-                Ast::Class(ref mut class) => compact.push(self.merge_sets(class)),
-                _ => compact.push(ast),
-            }
+        self.pos_ast != self.ast.len()
+    }
+    fn next_char(&mut self) -> bool {
+        self.pos_char += 1;
+
+        self.pos_char != self.chars.len()
+    }
+    pub fn is_match(&mut self, s: &str) -> bool {
+        self.chars = s.chars().collect();
+
+        loop {
+            if self.ast_contains() {
+                if !self.next_ast() { return true }
+            } else { self.pos_ast = 0 }
+
+            if !self.next_char() { break }
         }
 
-        Regex { ast: compact, pos: 0 }
+        false
     }
-    fn unify_ranges(&self, class: Vec<Ast>) -> Vec<Ast> {
-        for triple in class.windows(3) {
-            
-        }
-    }
-    fn merge_sets(&self, class: &mut RingBuf<Ast>) -> Ast {
-        if class.len() < 1 { panic!("An empty character class is invalid.") }
-
-        while class.len() > 1 {
-            // Second element is always a set op.
-            match class[1] {
-                Op::Difference => Op::difference(&mut class),
-                Op::SymmetricDifference => {
-                    Op::symmetric_difference(class),
-                },
-                Op::Intersection => Op::intersection(class),
-                Op::Union => Op::union(class),
-                _ => panic("`{:?}` is not valid inside `<>` and outside `[]`."),
-            }
-        }
-    }*/
 }

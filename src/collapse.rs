@@ -22,9 +22,10 @@ impl Collapser {
         let mut vec = vec![];
 
         loop {
-            let a = self.cur();
-            vec.push(match a {
-                Ast::Char(_)          => a,
+            let cur = self.cur();
+            vec.push(match cur {
+                Ast::Char(_) |
+                Ast::Literal(_) => cur,
                 Ast::Class(mut deque) => self.collapse_class(&mut deque),
                 _ => unimplemented!(),
             });
