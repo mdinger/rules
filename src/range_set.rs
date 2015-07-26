@@ -60,9 +60,9 @@ impl Set {
             // end, insert union after it has been fully expanded.
             for &Range(min, max) in &*set {
                 // value overlaps at the beginning or disjoint w/o gap on the low side.
-                if min_val < min && max_val >= min.prev() && max_val < max { max_val = max }
+                if min_val < min && max_val >= min.prev() && max_val <= max { max_val = max }
                 // value overlaps at the end or disjoin w/o gap on the high side.
-                else if min_val > min && min_val <= max.next() && max_val > max { min_val = min }
+                else if min_val >= min && min_val <= max.next() && max_val > max { min_val = min }
                 // value is entirely contained between min and max. Insert original
                 // into new array because new is a subset.
                 else if min_val >= min && max_val <= max {

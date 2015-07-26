@@ -2,13 +2,18 @@ use super::generate;
 
 #[test]
 fn partial_overlap() {
-    let left  = generate(vec![('4', '6'), ('3', '4')]);
-    let right = generate(vec![('3', '4'), ('4', '6')]);
+    let left       = generate(vec![('4', '6'), ('3', '4')]);
+    let left_full  = generate(vec![('4', '6'), ('3', '6')]);
+    
+    let right      = generate(vec![('3', '4'), ('4', '6')]);
+    let right_full = generate(vec![('3', '4'), ('3', '6')]);
 
     let other  = generate(vec![('3', '6')]);
 
     assert_eq!(left, other);
+    assert_eq!(left_full, other);
     assert_eq!(right, other);
+    assert_eq!(right_full, other);
 }
 #[test]
 fn subset() {
