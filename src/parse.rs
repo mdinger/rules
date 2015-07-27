@@ -274,8 +274,8 @@ impl Parser {
         loop {
             let c = self.cur();
 
-            if is_alphanumeric(c) { vec.push(Ast::Char(c)) }
-            else if !is_whitespace(c) {
+            if c.is_alphanumeric() || c == '_' { vec.push(Ast::Char(c)) }
+            else if !c.is_whitespace() {
                 vec.push(try!(match c {
                     '\\'       => self.parse_escape_set(),
                     '\'' | '"' => self.parse_literal(),
@@ -303,7 +303,7 @@ impl Parser {
             if c == '>' {
                 closed = true;
                 break;
-            } else if !is_whitespace(c) {
+            } else if !c.is_whitespace() {
                 deque.push_back(try!(match c {
                     '-'       => Ok(Ast::Op(Op::Difference)),
                     '^'       => Ok(Ast::Op(Op::SymmetricDifference)),
@@ -348,7 +348,7 @@ impl Parser {
         while !closed && self.next() {
             let c = self.cur();
 
-            if c == ']' { closed = true } else if !is_whitespace(c) {
+            if c == ']' { closed = true } else if !c.is_whitespace() {
                 let ast = try!(match c {
                     '\\' => self.parse_escape_set(),
                     '.'  => {
@@ -380,7 +380,7 @@ impl Parser {
     fn parse_ellipsis(&mut self, a: char) -> Result<Ast> {
         while self.next() {
             let b = self.cur();
-            if !is_whitespace(b) {
+            if !b.is_whitespace() {
                 return match b {
                     ']'  => Err(ParseError::EllipsisCloseNeedsEscape),
                     '\\' => self.parse_escape().map(|c| Ast::Range(Range(a, c))),
@@ -448,15 +448,4 @@ impl Parser {
             true
         }
     }
-}
-
-// See if unicode container contains character `c`
-fn contains(container: &'static [(char, char)], c: char) -> bool {
-    container.iter().any(|&(open, close)| open <= c && c <= close )
-}
-fn is_alphanumeric(c: char) -> bool {
-    contains(PERLD, c) || contains(PERLW, c)
-}
-fn is_whitespace(c: char) -> bool {
-    contains(PERLS, c)
 }
