@@ -49,7 +49,7 @@
 //! First character | Example | Result
 //! ----------------|---------|-------
 //! Whitespace | `< big small >` | Alternative quotes matches `[ 'big' | 'small' ]`
-//! alphabetic | `<alpha>` | Named character class which captures
+//! alphabetic | `<alpha>` | Named character class which capture
 //! `?` | `<?before foo>` | A positive zero width assertion
 //! `!` | `<!before foo>` | A negative zero width assertion
 //! `[` | `<[ ab ]>` | A character class matches `[ 'a' | 'b' ]`
@@ -109,8 +109,6 @@
 //! // groups so set operators can be used.
 //! <[0-9] - [13579]> // Matches an even number
 //! <\d - [13579]>    // Same
-//! <[0-6] ^ [5-9]>   // Matches a `5` or `6`
-//! <-[0-6]>          // Negation: anything but 0-6
 //! ```
 //!
 //! # Comments
