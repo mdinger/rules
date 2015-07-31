@@ -229,7 +229,7 @@ pub enum Ast {
     Class(VecDeque<Ast>),           // <[135] + [68\w]>
     Dot,                            // .
     Group(Vec<Ast>, Faction),       // [123] or (123) outside a `<>`
-    Literal(Vec<char>),             // `'hello'` or `"hello"`
+    Literal(String),                // `'hello'` or `"hello"`
     Op(Op),
     // Unicode uses (open, close) pairs to denote range. A set of these is
     // more efficient than specifying every character. A set may include a
@@ -239,6 +239,28 @@ pub enum Ast {
 }
 
 impl Ast {
+    pub fn find(&self, txt: &str) -> Option<usize> {
+        match self {
+            &Ast::Char(c) => txt.find(c),
+            &Ast::Literal(ref s) => txt.find(s),
+            _ => unimplemented!(),
+        }
+    }
+    pub fn matches<'a>(&self, txt: &'a str) -> Option<&'a str> {
+        let vec: Vec<&str> = match self {
+            &Ast::Char(c) => {
+                if txt.starts_with(c) { txt.splitn(2, c).collect() }
+                else { return None }
+            },
+            &Ast::Literal(ref s) => {
+                if txt.starts_with(s) { txt.splitn(2, s).collect() }
+                else { return None }
+            },
+            _ => unimplemented!(),
+        };
+
+        Some(vec[1])
+    }
     fn negate(self) -> Self {
         match self {
             Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
@@ -417,13 +439,13 @@ impl Parser {
     // Parse the `'hello world'` and `"testing_this"`
     fn parse_literal(&mut self) -> Result<Ast> {
         let close = self.cur();
-        let mut vec = vec![];
+        let mut s = String::new();
 
         while self.next() {
             let c = self.cur();
-            if c == close { return Ok(Ast::Literal(vec)) }
+            if c == close { return Ok(Ast::Literal(s)) }
 
-            vec.push(c);
+            s.push(c);
         }
 
         Err(ParseError::LiteralMustClose(close))
