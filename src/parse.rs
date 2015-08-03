@@ -28,7 +28,7 @@ enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Error: {}", match *self {
-            ParseError::ClassInvalid(ref c) => 
+            ParseError::ClassInvalid(ref c) =>
                 format!("`{}` is invalid inside `<>` and outside `[]`.", c),
             ParseError::ClassMustClose    => "A `<` must have a closing `>`.".to_owned(),
             ParseError::ClassSetMustClose => "A `[` must have a closing `]`.".to_owned(),
@@ -40,7 +40,7 @@ impl fmt::Display for ParseError {
             ParseError::EmptyRegex        => "An empty regex is not allowed.".to_owned(),
             ParseError::EscapeNotLast     => "A `\\` must be followed by another char.".to_owned(),
             ParseError::Invalid(ref c)    => format!("`{}` is not valid here.", c),
-            ParseError::LiteralMustClose(ref c) => 
+            ParseError::LiteralMustClose(ref c) =>
                 format!("A literal must have an opening and closing `{}`.", c),
         })
     }
