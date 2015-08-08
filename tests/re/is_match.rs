@@ -30,3 +30,13 @@ fn literals_regular() {
     assert!( re.is_match("Well, 2and3and4and5 there."));
     assert!(!re.is_match("Well, 5and4and3and2 there."));
 }
+#[test]
+fn char_class_range() {
+    let re = Regex::new(r"<[a .. z]>");
+    assert!( re.is_match("a"));
+    assert!( re.is_match("p"));
+    assert!( re.is_match("z"));
+    assert!(!re.is_match("0"));
+    assert!(!re.is_match("9"));
+    assert!(!re.is_match("こ"));
+}
