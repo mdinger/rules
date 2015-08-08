@@ -57,10 +57,7 @@ impl Collapser {
         // Empty intersections like `< & [a] >` are not allowed.
         if let Ast::Empty = left { panic!("An empty class `<[]>` is not allowed!") }
 
-        let mut ret = VecDeque::new();
-        ret.push_front(left);
-
-        Ast::Class(ret)
+        left
     }
     fn next(&mut self) -> bool {
         self.pos += 1;

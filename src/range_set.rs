@@ -25,6 +25,12 @@ impl fmt::Display for Range {
     }
 }
 
+impl Range {
+    fn contains(&self, c: char) -> bool {
+        self.0 <= c && self.1 >= c
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Set(BTreeSet<Range>);
 
@@ -43,6 +49,13 @@ impl fmt::Display for Set {
 }
 
 impl Set {
+    pub fn contains(&self, c: char) -> bool {
+        for range in &self.0 {
+            if range.contains(c) { return true }
+        }
+
+        false
+    }
     pub fn new() -> Self { Set(BTreeSet::new()) }
     pub fn insert(&mut self, value: Range) {
         let mut ret = BTreeSet::new();

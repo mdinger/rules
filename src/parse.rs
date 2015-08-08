@@ -221,6 +221,23 @@ pub enum Faction {
     NonCapture,
 }
 
+trait FindSet {
+    fn find_set(&self, &Set, &Membership) -> Option<usize>;
+}
+
+impl FindSet for str {
+    fn find_set(&self, set: &Set, membership: &Membership) -> Option<usize> {
+        for (index, c) in self.chars().enumerate() {
+            match *membership {
+                Inclusive => if  set.contains(c) { return Some(index) },
+                Exclusive => if !set.contains(c) { return Some(index) },
+            }
+        }
+
+        None
+    }
+}
+
 // Abstract syntax tree
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Ast {
@@ -235,17 +252,22 @@ pub enum Ast {
     // more efficient than specifying every character. A set may include a
     // few dozen pairs instead of 100s/1000s.
     Range(Range),                   // (open, close) range for character sets
+    // A character class with all the ops already applied.
     Set(Set, Membership),           // [1..5 \d] inside a `<>`
 }
 
 impl Ast {
+    // Return the index where the first match is found as an Option.
     pub fn find(&self, txt: &str) -> Option<usize> {
         match self {
             &Ast::Char(c) => txt.find(c),
             &Ast::Literal(ref s) => txt.find(s),
+            &Ast::Set(ref set, ref membership) => txt.find_set(set, membership),
             _ => unimplemented!(),
         }
     }
+    // If the str matches, return the remainer of the str after the 1st match
+    // has been trimmed off.
     pub fn matches<'a>(&self, txt: &'a str) -> Option<&'a str> {
         let vec: Vec<&str> = match self {
             &Ast::Char(c) => {
@@ -256,7 +278,7 @@ impl Ast {
                 if txt.starts_with(s) { txt.splitn(2, s).collect() }
                 else { return None }
             },
-            _ => unimplemented!(),
+            ast => return if let Some(index) = ast.find(txt) { Some(&txt[index..]) } else { None }
         };
 
         Some(vec[1])
