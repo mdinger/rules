@@ -1,15 +1,13 @@
 use rules::parse::Ast::*;
 use rules::parse::Membership::*;
 
-use super::{new_deque, simplify};
+use super::simplify;
 
 #[test]
 fn char_class() {
     // Set of chars inside `[]`
-    let set = vec![Char('a')].into();
-    // Deque of ops and sets inside `<>`
-    let deque = new_deque(vec![Set(set, Inclusive)]);
+    let set = Set(vec![Char('a')].into(), Inclusive);
     // A single class which is the union of all subsets.
-    assert_eq!(vec![Class(deque.clone())], simplify(r"< ^ [ a ] ^ >"));
-    assert_eq!(vec![Class(deque)], simplify(r"<[ \d abc ] ^ [ \d bcde ] ^ [ de ]>"));
+    assert_eq!(vec![set.clone()], simplify(r"< ^ [ a ] ^ >"));
+    assert_eq!(vec![set], simplify(r"<[ \d abc ] ^ [ \d bcde ] ^ [ de ]>"));
 }
