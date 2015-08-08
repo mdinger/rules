@@ -6,7 +6,26 @@ was supposed to break anything while ignoring backwards compatibility. Thus, the
 *regex* from Perl 5 was improved into what they are now calling a framework of
 *rules*. This provides more flexibility than before and is syntactically different.
 
-A straightforward intro to Perl 6 rules is found
+Speed is not currently a priority. If it's fast, great. If it isn't, so be it. I'm
+mainly trying to work towards getting the syntax working properly. If the syntax
+works properly, it can be experimented with even if it isn't used seriously. This
+is important because while regular regex are kinda powerful, they are really
+difficult to read, may do many non-obvious things, and things like literal whitespacing
+makes large regex really difficult to work with. Rules changes a lot of those aspects
+and so hopefully makes them much more usable.
+
+The cargo built docs are not necessarily current with the library. I scope out the
+official Perl6 docs for how syntax works and update my *local* docs to match what I
+understand. Then I base the library on the *local* docs. So the local docs should
+always run ahead of what the library can do. For examples of what the library can
+do, look at the tests in `tests/re`.
+
+The main perl 6 regex docs are at
+[doc.perl6.org](http://doc.perl6.org/language/regexes).
+The regex design docs are at [S05](http://design.perl6.org/S05.html) which is really
+helpful when trying to interpret parts of the spec. Of course, wikipedia also has
+a piece on [rules](https://en.wikipedia.org/wiki/Perl_6_rules).
+
+A another different intro to Perl 6 rules is found
 [here](https://github.com/perlpilot/perl6-docs/blob/master/intro/p6-regex-intro.pod).
 
-The main reference to [Perl 6 regex documentation](http://doc.perl6.org/language/regexes).
