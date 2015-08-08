@@ -2,8 +2,13 @@
 
 name = "rules"
 version = "0.0.1"
-description = "An implementation of Perl 6 regex rules"
 authors = ["mdinger <mdinger.bugzilla@gmail.com>"]
+readme = "README.md"
+description = "An implementation of Perl 6 regex rules"
+homepage = "https://github.com/mdinger/rules"
+repository = "https://github.com/mdinger/rules"
+license = "Unlicense/MIT"
+
 
 [[bin]]
 name = "rules"
