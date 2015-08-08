@@ -278,7 +278,7 @@ impl Ast {
                 if txt.starts_with(s) { txt.splitn(2, s).collect() }
                 else { return None }
             },
-            ast => return if let Some(index) = ast.find(txt) { Some(&txt[index..]) } else { None }
+            ast => return if let Some(index) = ast.find(txt) { Some(&txt[index + 1..]) } else { None },
         };
 
         Some(vec[1])

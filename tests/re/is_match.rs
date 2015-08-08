@@ -40,3 +40,28 @@ fn char_class_range() {
     assert!(!re.is_match("9"));
     assert!(!re.is_match("こ"));
 }
+
+#[test]
+fn char_class_multi() {
+    let re = Regex::new(r"<[ 0 .. 9 ]> <[ a .. z ]>");
+    assert!( re.is_match("0z"));
+    assert!( re.is_match("3b"));
+    assert!( re.is_match("9h"));
+    assert!(!re.is_match("a3"));
+    assert!(!re.is_match("3A"));
+    assert!(!re.is_match("こ"));
+
+    let re = Regex::new(r"<[ 0 .. 9 ]> ' dogs'");
+    assert!( re.is_match("0 dogs"));
+    assert!( re.is_match("4 dogz and 3 dogs"));
+    assert!( re.is_match("9 dogs more"));
+    assert!( re.is_match("4 cats and 7 dogs and 2 pigs"));
+
+    assert!(!re.is_match("五 dogs")); // Japanese number 5
+    assert!(!re.is_match("b dogs"));
+    assert!(!re.is_match("A dogs"));
+    assert!(!re.is_match("0 dogz"));
+    assert!(!re.is_match("4 cats and 3 dogz"));
+    assert!(!re.is_match("9 dogz and 3 cats"));
+    assert!(!re.is_match("4 cats and 7 dogz and 2 pigs"));
+}
