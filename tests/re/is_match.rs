@@ -1,6 +1,15 @@
 use rules::re::Regex;
 
 #[test]
+fn whitespace_ignored() {
+    let re = Regex::new(r"pine
+                          apple");
+    assert!( re.is_match("I bought a pineapple."));
+
+    let re = Regex::new(r"gold fish");
+    assert!( re.is_match("Do you have a goldfish?"));
+}
+#[test]
 fn chars() {
     let re = Regex::new(r"Apple");
     assert!( re.is_match("I have an Apple. Do you?"));
