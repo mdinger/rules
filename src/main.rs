@@ -4,23 +4,10 @@
 
 extern crate rules;
 
-use rules::parse;
-use rules::collapse;
-
-fn test_collapse(regex: &str) {
-    let parsed = match parse::parse(regex) {
-        Ok(vec) => vec,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
-    println!("Parsed:\n{:?}", &parsed);
-
-    let collapsed = collapse::collapse(parsed);
-    println!("Collapsed:\n{:?}", &collapsed);
-}
+use rules::re::Regex;
 
 fn main() {
-    test_collapse(r" ab<[..]> ");
+    let re = Regex::new(r"pine  // This is a comment
+                          apple // This is another comment");
+    println!("match is {}", re.is_match("pineapple"));
 }
