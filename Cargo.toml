@@ -2,6 +2,7 @@
 
 name = "rules"
 version = "0.0.1"
+description = "An implementation of Perl 6 regex rules"
 authors = ["mdinger <mdinger.bugzilla@gmail.com>"]
 
 [[bin]]
