@@ -28,9 +28,22 @@ do, look at the tests in `tests/re`.
 The main perl 6 regex docs are at
 [doc.perl6.org](http://doc.perl6.org/language/regexes).
 The regex design docs are at [S05](http://design.perl6.org/S05.html) which is really
-helpful when trying to interpret parts of the spec. Of course, wikipedia also has
-a piece on [rules](https://en.wikipedia.org/wiki/Perl_6_rules).
+helpful when trying to interpret parts of the spec.
 
 A another different intro to Perl 6 rules is found
 [here](https://github.com/perlpilot/perl6-docs/blob/master/intro/p6-regex-intro.pod).
 
+## Usage
+
+Add the following to your Cargo.toml:
+
+```toml
+[dependencies]
+rules = "*"
+```
+
+and this to your crate root:
+
+```rust
+extern crate rules;
+```
