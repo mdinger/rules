@@ -1,5 +1,9 @@
 # rules
 
+A Rust implementation of Perl 6 regex rules
+
+[![Build Status](https://travis-ci.org/mdinger/rules.svg?branch=master)](https://travis-ci.org/mdinger/rules)
+
 Note: if you just want a good implementation of a regex, use
 [regex](https://crates.io/crates/regex). This is an experimental library which
 currently would likely be entirely inadequate for your purposes. Hopefully it
