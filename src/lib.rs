@@ -121,9 +121,9 @@
 //! regex"
 //! ```
 
-pub mod collapse;
-pub mod parse;
-pub mod re;
-pub mod range_set;
-pub mod unicode;
+#[doc(hidden)] pub mod collapse;
+#[doc(hidden)] pub mod parse;
+#[doc(hidden)] pub mod range_set;
+#[doc(hidden)] pub mod unicode;
 
+pub mod re;
