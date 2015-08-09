@@ -11,6 +11,25 @@ impl Regex {
 
         Regex(vec)
     }
+    /// Returns true if and only if the regex matches the string given.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate rules; use rules::re::Regex;
+    /// # fn main() {
+    /// let pineapple = Regex::new(r"pine
+    ///                              apple");
+    /// assert!(pineapple.is_match("I bought a pineapple."));
+    ///
+    /// // Digit or `a`. `-` is set difference.
+    /// let char_class = Regex::new(r"<[ 0 .. 9 a .. z] - [ b .. z ]>");
+    /// assert!(char_class.is_match("3"));
+    /// assert!(char_class.is_match("a"));
+    ///
+    /// assert!(!char_class.is_match("b"));
+    /// }
+    /// ```
     pub fn is_match(&self, s: &str) -> bool {
         let match_start = MatchStart { ast: &self.0[0], chars: s, cur: 0 };
         let mut matches = false;

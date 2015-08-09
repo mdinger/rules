@@ -8,6 +8,11 @@
 //! revised from Perl 5 and should not be equated with it. This may look
 //! nothing like any regex you have seen before.
 //!
+//! # Note
+//!
+//! The only real currently available method is [`is_match()`]
+//! (re/struct.Regex.html#method.is_match).
+//!
 //! # Syntax
 //!
 //! Currently, this is designed for ASCII and may not behave properly
