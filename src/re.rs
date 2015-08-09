@@ -28,7 +28,7 @@ impl Regex {
     /// assert!(char_class.is_match("a"));
     ///
     /// assert!(!char_class.is_match("b"));
-    /// }
+    /// # }
     /// ```
     pub fn is_match(&self, s: &str) -> bool {
         let match_start = MatchStart { ast: &self.0[0], chars: s, cur: 0 };
