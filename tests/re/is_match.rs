@@ -73,3 +73,19 @@ fn char_class_multi() {
     assert!(!re.is_match("9 dogz and 3 cats"));
     assert!(!re.is_match("4 cats and 7 dogz and 2 pigs"));
 }
+#[test]
+fn comments_are_ignored() {
+    let before = Regex::new(r"# This is a comment
+                              pineapple");
+    let between = Regex::new(r"pine  # This is a comment
+                               apple");
+    let after = Regex::new(r"pineapple # This is a comment");
+    let after_both = Regex::new(r"pine # This is a comment
+                                  apple # This is second comment");
+
+    assert!(before    .is_match("pineapple"));
+    assert!(between   .is_match("pineapple"));
+    assert!(after     .is_match("pineapple"));
+    assert!(after_both.is_match("pineapple"));
+}
+
