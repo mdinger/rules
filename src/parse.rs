@@ -328,6 +328,7 @@ impl Parser {
                     '\'' | '"' => self.parse_literal(),
                     '<'        => self.parse_class(),
                     '.'        => Ok(Ast::Dot),
+                    '#'        => self.parse_comment(),
                     _          => Err(ParseError::Invalid(c)),
                 }));
             }
@@ -421,6 +422,17 @@ impl Parser {
         if !closed { return Err(ParseError::ClassSetMustClose) }
 
         Ok(vec.into())
+    }
+    // When a `#` initiates a comment, continue parsing to the end of the line
+    fn parse_comment(&mut self) -> Result<Ast> {
+        while self.next() {
+            match self.cur() {
+                '\n' | '\r' => break,
+                _ => {},
+            }
+        }
+
+        Ok(Ast::Empty)
     }
     // The `a .. b` notation has been parsed. Determine `b` and return a `Range`
     // from `a` to `b`.

@@ -1,14 +1,5 @@
 # Differences from Perl 6 by design
 
-Perl uses `#` for comments. Rust uses `//`. Comments in regex
-will use `//` instead of `#`. An example:
-```rust
-r"a // letter `a`
-  b // letter `b`
-  c // letter `c`
-";
-```
-
 In perl6, lookaround assertions have `before` and `after` on the
 wrong side of the leading to weird things like them both being
 backwards when both are used. For example in Perl 6:

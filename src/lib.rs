@@ -122,7 +122,7 @@
 //!
 //! ```plain
 //! // This matches `myregex`
-//! r"my // This is a comment which goes to the end of the line
+//! r"my # This is a comment which goes to the end of the line
 //! regex"
 //! ```
 

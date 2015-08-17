@@ -23,12 +23,15 @@ impl Collapser {
 
         loop {
             let cur = self.cur();
-            vec.push(match cur {
+            let ast = match cur {
                 Ast::Char(_) |
-                Ast::Literal(_) => cur,
-                Ast::Class(mut deque) => self.collapse_class(&mut deque),
+                Ast::Literal(_) => Some(cur),
+                Ast::Class(mut deque) => Some(self.collapse_class(&mut deque)),
+                Ast::Empty => None,
                 _ => unimplemented!(),
-            });
+            };
+
+            if let Some(val) = ast { vec.push(val) }
 
             if !self.next() { break }
         }
