@@ -306,9 +306,12 @@ impl Parser {
     fn cur(&self) -> char { self.chars[self.pos] }
     // True if next finds another char.
     fn next(&mut self) -> bool {
-        self.pos += 1;
+        if self.pos == self.chars.len() - 1 { false }
+        else {
+            self.pos += 1;
 
-        self.pos != self.chars.len()
+            true
+        }
     }
     fn parse(&mut self) -> Result<Vec<Ast>> {
         let mut vec = vec![];
@@ -486,7 +489,8 @@ impl Parser {
     }
     // True if prev finds another char.
     fn prev(&mut self) -> bool {
-        if self.pos == 0 { false } else {
+        if self.pos == 0 { false }
+        else {
             self.pos -= 1;
 
             true
