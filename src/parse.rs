@@ -3,7 +3,7 @@ use parse::Faction::*;
 use range_set::{Range, Set};
 use std::collections::VecDeque;
 use std::{char, fmt};
-use std::convert::Into;
+use std::convert::From;
 use std::result;
 // Unicode tables for character classes are defined in libunicode
 use unicode::regex::{PERLD, PERLS, PERLW};
@@ -46,11 +46,11 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl Into<Set> for &'static [(char, char)] {
-    fn into(self) -> Set {
+impl From<&'static [(char, char)]> for Set {
+    fn from(array: &'static [(char, char)]) -> Self {
         let mut set = Set::new();
 
-        for &(open, close) in self {
+        for &(open, close) in array {
             set.insert(Range(open, close));
         }
 
@@ -58,10 +58,10 @@ impl Into<Set> for &'static [(char, char)] {
     }
 }
 
-impl Into<Set> for char {
-    fn into(self) -> Set {
+impl From<char> for Set {
+    fn from(c: char) -> Self {
         let mut set = Set::new();
-        set.insert(Range(self, self));
+        set.insert(Range(c, c));
 
         set
     }
@@ -69,16 +69,15 @@ impl Into<Set> for char {
 
 // A set may be composed of Chars and Ranges but other types
 // have no meaning here. These are the only applicable types.
-impl Into<Set> for Vec<Ast> {
-    fn into(self) -> Set {
+impl From<Vec<Ast>> for Set {
+    fn from(vec: Vec<Ast>) -> Self {
         let mut set = Set::new();
 
-        for ast in self {
+        for ast in vec {
             match ast {
                 Ast::Char(c)      => set.insert(Range(c, c)),
                 Ast::Range(range) => set.insert(range),
-                x => { println!("x: {:?}", x);
-                       unreachable!() },
+                _ => unreachable!(),
             }
         }
 
@@ -86,11 +85,11 @@ impl Into<Set> for Vec<Ast> {
     }
 }
 
-impl Into<Ast> for Vec<Ast> {
-    fn into(self) -> Ast {
+impl From<Vec<Ast>> for Ast {
+    fn from(vec: Vec<Ast>) -> Self {
         let (mut inclusive, mut exclusive) = (Set::new(), Set::new());
 
-        for ast in self {
+        for ast in vec {
             match ast {
                 Ast::Char(c) => inclusive.insert(Range(c, c)),
                 Ast::Range(range) => inclusive.insert(range),
