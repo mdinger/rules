@@ -13,10 +13,9 @@
 //! The only real currently available method is [`is_match()`]
 //! (re/struct.Regex.html#method.is_match).
 //!
-//! # Syntax
+//! This is designed to operate on Unicode scalar values.
 //!
-//! Currently, this is designed for ASCII and may not behave properly
-//! with Unicode.
+//! # Syntax
 //!
 //! Whitespace is generally ignored so that a regex can be more readable
 //! and less dense.
