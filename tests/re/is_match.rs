@@ -55,16 +55,26 @@ fn char_class_multi() {
     assert!( re.is_match("0z"));
     assert!( re.is_match("3b"));
     assert!( re.is_match("9h"));
-    assert!(!re.is_match("a3"));
-    assert!(!re.is_match("3A"));
-    assert!(!re.is_match("こ"));
 
+    // Doesn't match with a gap.
+    assert!(!re.is_match("0_z"));
+    assert!(!re.is_match("3_b"));
+    assert!(!re.is_match("9_h"));
+
+    // Must be in the correct order.
+    assert!(!re.is_match("a3"));
+
+    // Must be the correct case.
+    assert!(!re.is_match("3A"));
+
+    // Combines with other operators properly.
     let re = Regex::new(r"<[ 0 .. 9 ]> ' dogs'");
     assert!( re.is_match("0 dogs"));
     assert!( re.is_match("4 dogz and 3 dogs"));
     assert!( re.is_match("9 dogs more"));
     assert!( re.is_match("4 cats and 7 dogs and 2 pigs"));
 
+    // Doesn't hit partial matches.
     assert!(!re.is_match("五 dogs")); // Japanese number 5
     assert!(!re.is_match("b dogs"));
     assert!(!re.is_match("A dogs"));
