@@ -44,7 +44,7 @@ impl Regex {
                 // is the workaround.
                 matches = true;
 
-                if let Some(trimmed) = ast.matches(substr) {
+                if let Some(trimmed) = ast.trim_left_match(substr) {
                     substr = trimmed;
                 } else {
                     matches = false;

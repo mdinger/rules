@@ -220,20 +220,26 @@ pub enum Faction {
     NonCapture,
 }
 
-trait FindSet {
+trait SetMatch {
     fn find_set(&self, &Set, &Membership) -> Option<usize>;
+    fn starts_with_set(&self, &Set, &Membership) -> bool;
 }
 
-impl FindSet for str {
+impl SetMatch for str {
     fn find_set(&self, set: &Set, membership: &Membership) -> Option<usize> {
-        for (index, c) in self.chars().enumerate() {
-            match *membership {
-                Inclusive => if  set.contains(c) { return Some(index) },
-                Exclusive => if !set.contains(c) { return Some(index) },
-            }
-        }
-
-        None
+        self.chars()
+            .position(|c| match *membership {
+                Inclusive =>  set.contains(c),
+                Exclusive => !set.contains(c),
+            })
+    }
+    fn starts_with_set(&self, set: &Set, membership: &Membership) -> bool {
+        self.chars()
+            .take(1)
+            .any(|c| match *membership {
+                Inclusive =>  set.contains(c),
+                Exclusive => !set.contains(c),
+            })
     }
 }
 
@@ -267,20 +273,15 @@ impl Ast {
     }
     // If the str matches, return the remainer of the str after the 1st match
     // has been trimmed off.
-    pub fn matches<'a>(&self, txt: &'a str) -> Option<&'a str> {
-        let vec: Vec<&str> = match self {
-            &Ast::Char(c) => {
-                if txt.starts_with(c) { txt.splitn(2, c).collect() }
-                else { return None }
+    pub fn trim_left_match<'a>(&self, txt: &'a str) -> Option<&'a str> {
+        match self {
+            &Ast::Char(c)        => if txt.starts_with(c) { Some(&txt[1..]) } else { None },
+            &Ast::Literal(ref s) => if txt.starts_with(s) { Some(&txt[s.len()..]) } else { None },
+            &Ast::Set(ref set, ref membership) => {
+                if txt.starts_with_set(set, membership) { Some(&txt[1..]) } else { None }
             },
-            &Ast::Literal(ref s) => {
-                if txt.starts_with(s) { txt.splitn(2, s).collect() }
-                else { return None }
-            },
-            ast => return if let Some(index) = ast.find(txt) { Some(&txt[index + 1..]) } else { None },
-        };
-
-        Some(vec[1])
+            _ => unimplemented!(),
+        }
     }
     fn negate(self) -> Self {
         match self {
