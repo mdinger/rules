@@ -305,14 +305,7 @@ struct Parser {
 impl Parser {
     fn cur(&self) -> char { self.chars[self.pos] }
     // True if next finds another char.
-    fn next(&mut self) -> bool {
-        if self.pos == self.chars.len() - 1 { false }
-        else {
-            self.pos += 1;
-
-            true
-        }
-    }
+    fn next(&mut self) -> bool { self.skip_forward(1) }
     fn parse(&mut self) -> Result<Vec<Ast>> {
         let mut vec = vec![];
 
@@ -504,6 +497,14 @@ impl Parser {
         if self.pos == 0 { false }
         else {
             self.pos -= 1;
+
+            true
+        }
+    }
+    fn skip_forward(&mut self, i: usize) -> bool {
+        if self.pos + i > self.chars.len() - 1 { false }
+        else {
+            self.pos += i;
 
             true
         }
