@@ -303,6 +303,20 @@ struct Parser {
 }
 
 impl Parser {
+    fn base_parse_match(&mut self, c: char) -> Result<Ast> {
+        match c {
+            'a' ... 'z' |
+            'A' ... 'Z' |
+            '0' ... '9' |
+            '_'        => Ok(Ast::Char(c)),
+            '\\'       => self.parse_escape_set(),
+            '\'' | '"' => self.parse_literal(),
+            '<'        => self.parse_chevrons(),
+            '.'        => Ok(Ast::Dot),
+            '#'        => self.parse_comment(),
+            _          => Err(ParseError::Invalid(c)),
+        }
+    }
     fn cur(&self) -> char { self.chars[self.pos] }
     // True if next finds another char.
     fn next(&mut self) -> bool { self.skip_forward(1) }
@@ -314,17 +328,7 @@ impl Parser {
         loop {
             let c = self.cur();
 
-            if c.is_alphanumeric() || c == '_' { vec.push(Ast::Char(c)) }
-            else if !c.is_whitespace() {
-                vec.push(try!(match c {
-                    '\\'       => self.parse_escape_set(),
-                    '\'' | '"' => self.parse_literal(),
-                    '<'        => self.parse_class(),
-                    '.'        => Ok(Ast::Dot),
-                    '#'        => self.parse_comment(),
-                    _          => Err(ParseError::Invalid(c)),
-                }));
-            }
+            if !c.is_whitespace() { vec.push(try!(self.base_parse_match(c))); }
 
             if !self.next() { break }
         }
