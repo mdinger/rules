@@ -12,9 +12,14 @@ pub type Result<T> = result::Result<T, ParseError>;
 
 #[derive(Debug)]
 enum ParseError {
+    AssertionInvalidName,
+    AssertionMustBeNamed,
+    ChevronsMayNotBeEmpty,
     ClassInvalid(char),
+    ClassLeadingOpBanned,
     ClassMustClose,
     ClassSetMustClose,
+    ClassTrailingOpBanned,
     EllipsisCloseNeedsEscape,
     EllipsisNotFirst,
     EllipsisNotLast,
@@ -28,10 +33,17 @@ enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Error: {}", match *self {
+            ParseError::AssertionInvalidName => "This assertion is invalid. Only `before` or `after` are valid.".to_owned(),
+            ParseError::AssertionMustBeNamed => "An assertion must be followed by a name.".to_owned(),
+            ParseError::ChevronsMayNotBeEmpty => "A `<>` is not allowed".to_owned(),
             ParseError::ClassInvalid(ref c) =>
                 format!("`{}` is invalid inside `<>` and outside `[]`.", c),
+            ParseError::ClassLeadingOpBanned =>
+                "The first character in a character class may not be a set operator".to_owned(),
             ParseError::ClassMustClose    => "A `<` must have a closing `>`.".to_owned(),
             ParseError::ClassSetMustClose => "A `[` must have a closing `]`.".to_owned(),
+            ParseError::ClassTrailingOpBanned =>
+                "The final character in a character class may not be a set operator".to_owned(),
             ParseError::EllipsisCloseNeedsEscape =>
                 "An `..` cannot be closed by an unescaped `]`".to_owned(),
             ParseError::EllipsisNotFirst  => "`..` cannot be the first element in a character class.".to_owned(),
@@ -85,6 +97,7 @@ impl From<Vec<Ast>> for Set {
     }
 }
 
+// Unify a set of Chars, Ranges, and Sets into a single Set.
 impl From<Vec<Ast>> for Ast {
     fn from(vec: Vec<Ast>) -> Self {
         let (mut inclusive, mut exclusive) = (Set::new(), Set::new());
@@ -220,6 +233,18 @@ pub enum Faction {
     NonCapture,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Sign {
+    Negative,
+    Positive,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Assertion {
+    Lookahead,  // `foo <?after bar>`
+    Lookbehind, // `<?before foo> bar`
+}
+
 trait SetMatch {
     fn find_set(&self, &Set, &Membership) -> Option<usize>;
     fn starts_with_set(&self, &Set, &Membership) -> bool;
@@ -246,9 +271,10 @@ impl SetMatch for str {
 // Abstract syntax tree
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Ast {
+    Assertion(Vec<Ast>, Assertion, Sign), // `<?before foo>`
     Empty,
     Char(char),                     // abc123
-    Class(VecDeque<Ast>),           // <[135] + [68\w]>
+    CharClass(VecDeque<Ast>, Sign), // <[135] + [68\w]>
     Dot,                            // .
     Group(Vec<Ast>, Faction),       // [123] or (123) outside a `<>`
     Literal(String),                // `'hello'` or `"hello"`
@@ -283,7 +309,7 @@ impl Ast {
             _ => unimplemented!(),
         }
     }
-    fn negate(self) -> Self {
+    pub fn negate(self) -> Self {
         match self {
             Ast::Set(set, membership) => Ast::Set(set, membership.negate()),
             _ => unreachable!(),
@@ -293,29 +319,31 @@ impl Ast {
 
 pub fn parse(s: &str) -> Result<Vec<Ast>> {
     Parser { chars: s.chars().collect(),
+             slice: s.into(),
              pos: 0,
     }.parse()
 }
 
 struct Parser {
     chars: Vec<char>,
+    slice: String,
     pos: usize,
 }
 
 impl Parser {
+    // Base parsing match which is used at the top level. Will also appear
+    // when anything may appear such as inside an assertion.
     fn base_parse_match(&mut self, c: char) -> Result<Ast> {
-        match c {
-            'a' ... 'z' |
-            'A' ... 'Z' |
-            '0' ... '9' |
-            '_'        => Ok(Ast::Char(c)),
+        // Requires `alphanumeric` to hit unicode characters.
+        if c.is_alphanumeric() || c == '_' { Ok(Ast::Char(c)) }
+        else { match c {
             '\\'       => self.parse_escape_set(),
             '\'' | '"' => self.parse_literal(),
             '<'        => self.parse_chevrons(),
             '.'        => Ok(Ast::Dot),
             '#'        => self.parse_comment(),
             _          => Err(ParseError::Invalid(c)),
-        }
+        }}
     }
     fn cur(&self) -> char { self.chars[self.pos] }
     // True if next finds another char.
@@ -335,8 +363,36 @@ impl Parser {
 
         Ok(vec)
     }
-    // Parse the `< [123 a] + [4 \d] - [\w \d] >`
-    fn parse_class(&mut self) -> Result<Ast> {
+    // An assertion may look like `<?before foo>`. The first character denotes positive (`?`)
+    // or negative (`!`). `before` is lookbehind and `after` is lookahead. Parse the tail
+    // of the assertion after the `<`.
+    fn parse_assertion(&mut self, sign: Sign) -> Result<Ast> {
+        let mut closed = false;
+        let mut vec = vec![];
+
+        if !self.next() { return Err(ParseError::AssertionMustBeNamed) }
+
+        let lookaround =
+             if self.skip_if_starts_with("before") { Assertion::Lookbehind }
+        else if self.skip_if_starts_with("after") { Assertion::Lookahead }
+        else { return Err(ParseError::AssertionInvalidName) };
+
+        while self.next() {
+            let c = self.cur();
+
+            if c == '>' {
+                closed = true;
+
+                break
+            } else if !c.is_whitespace() { vec.push(try!(self.base_parse_match(c))) }
+        }
+
+        if !closed { return Err(ParseError::ClassMustClose) }
+
+        Ok(Ast::Assertion(vec, lookaround, sign))
+    }
+    // Parse the tail of a character class (`<[abc] - [a]>`) after the `<`.
+    fn parse_char_class(&mut self, sign: Sign) -> Result<Ast> {
         // Classes will need to be merged later which requires collapsing from the
         // front so I'm using a deque (`<[abc] + [cde]>` collapses to `<[a...e]>`).
         let mut deque = VecDeque::new();
@@ -345,16 +401,14 @@ impl Parser {
         while self.next() {
             let c = self.cur();
 
-            if c == '>' {
-                closed = true;
-                break;
-            } else if !c.is_whitespace() {
+            if !c.is_whitespace() {
                 deque.push_back(try!(match c {
+                    '>'       => { closed = true; break },
                     '-'       => Ok(Ast::Op(Op::Difference)),
                     '^'       => Ok(Ast::Op(Op::SymmetricDifference)),
                     '&'       => Ok(Ast::Op(Op::Intersection)),
                     '+' | '|' => Ok(Ast::Op(Op::Union)),
-                    '['       => self.parse_class_set(),
+                    '['       => self.parse_char_class_set(),
                     _         => Err(ParseError::ClassInvalid(c)),
                 }));
             }
@@ -362,28 +416,28 @@ impl Parser {
 
         if !closed { return Err(ParseError::ClassMustClose) }
 
-        // Insert `Empty` in front if first character is a binary op.
+        // Error if the first element is an operator.
         match deque[0] {
             Ast::Op(Op::Difference) |
             Ast::Op(Op::SymmetricDifference) |
             Ast::Op(Op::Intersection) |
-            Ast::Op(Op::Union) => deque.push_front(Ast::Empty),
+            Ast::Op(Op::Union) => return Err(ParseError::ClassLeadingOpBanned),
             _ => {},
         }
 
-        // Insert `Empty` in back if last character is a binary op.
+        // Error if the last element is an operator.
         match deque[deque.len()-1] {
             Ast::Op(Op::Difference) |
             Ast::Op(Op::SymmetricDifference) |
             Ast::Op(Op::Intersection) |
-            Ast::Op(Op::Union) => deque.push_back(Ast::Empty),
+            Ast::Op(Op::Union) => return Err(ParseError::ClassTrailingOpBanned),
             _ => {},
         }
 
-        Ok(Ast::Class(deque))
+        Ok(Ast::CharClass(deque, sign))
     }
     // Inside a `<>`, parse the `[123 a]` or `[4 \d]`. Assume `[` is the first char.
-    fn parse_class_set(&mut self) -> Result<Ast> {
+    fn parse_char_class_set(&mut self) -> Result<Ast> {
         // Need a set but an ellipsis will require pulling the last element back off
         // the end. A set may not preserve order so a vec is used to build then
         // morphed into a set later.
@@ -418,7 +472,31 @@ impl Parser {
 
         if !closed { return Err(ParseError::ClassSetMustClose) }
 
+        // Into unifies the entire series of sets created here into a single
+        // Ast::Set with the proper membership.
         Ok(vec.into())
+    }
+    // Parse the `< ... >` set. Can create a character class: `<[a..b] + [e..h] - [f]>`,
+    // or positive (`<?before foo>`) and negative (`<!before foo>`) assertions.
+    fn parse_chevrons(&mut self) -> Result<Ast> {
+        if self.next() {
+            let c = self.cur();
+
+            // Determine if this is a character class or an assertion.
+            match c {
+                '>' => return Err(ParseError::ChevronsMayNotBeEmpty),
+                '-' => self.parse_char_class(Sign::Negative),
+                '+' => self.parse_char_class(Sign::Positive),
+                // Don't want to process this here. Back up so the next call can process it.
+                '[' => {
+                    self.prev();
+                    self.parse_char_class(Sign::Positive)
+                },
+                '?' => self.parse_assertion(Sign::Positive),
+                '!' => self.parse_assertion(Sign::Negative),
+                _   => unimplemented!(),
+            }
+        } else { return Err(ParseError::ClassMustClose) }
     }
     // When a `#` initiates a comment, continue parsing to the end of the line
     fn parse_comment(&mut self) -> Result<Ast> {
@@ -505,6 +583,7 @@ impl Parser {
             true
         }
     }
+    // Skip `pos` forward by `i`. If the skip is too large, `pos` isn't modified.
     fn skip_forward(&mut self, i: usize) -> bool {
         if self.pos + i > self.chars.len() - 1 { false }
         else {
@@ -512,5 +591,11 @@ impl Parser {
 
             true
         }
+    }
+    // If slice from the current position onwards starts with `txt`, skip the position forward
+    // to just after the `txt` match position.
+    fn skip_if_starts_with(&mut self, txt: &str) -> bool {
+        if self.slice[self.pos..].starts_with(txt) { self.skip_forward(txt.len()); true }
+        else { false }
     }
 }
