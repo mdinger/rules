@@ -2,6 +2,7 @@ use rules::unicode::regex::PERLS;
 use rules::parse::Ast::*;
 use rules::parse::Membership::*;
 use rules::parse::Op::*;
+use rules::parse::Sign::*;
 use rules::range_set;
 
 use super::parse;
@@ -14,7 +15,7 @@ fn chars() {
     // Deque of ops and sets inside `<>`
     let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque)], parse(r"< [ abc ] >"));
+    assert_eq!(vec![CharClass(deque, Positive)], parse(r"<[ abc ] >"));
 }
 #[test]
 fn with_ops() {
@@ -26,31 +27,16 @@ fn with_ops() {
                                Op(Union),
                                Set(set_b, Inclusive)]);
     // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque)], parse(r"< [ a ] + [ b ] >"));
+    assert_eq!(vec![CharClass(deque, Positive)], parse(r"<[ a ] + [ b ] >"));
 }
 #[test]
 fn pre_op() {
     // Set of chars inside `[]`
     let set = vec![Char('a')].into();
-    // Deque of ops and sets inside `<>`. Pre-ops get an `Empty`
-    // prepended so binary ops can be applied to them.
-    let deque = new_deque(vec![Empty,
-                               Op(Difference),
-                               Set(set, Inclusive)]);
+    // Deque of ops and sets inside `<>`.
+    let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque)], parse(r"< - [ a ] >"));
-}
-#[test]
-fn post_op() {
-    // Set of chars inside `[]`
-    let set = vec![Char('a')].into();
-    // Deque of ops and sets inside `<>`. Post-ops get an `Empty`
-    // appended so binary ops can be applied to them.
-    let deque = new_deque(vec![Set(set, Inclusive),
-                               Op(Union),
-                               Empty]);
-    // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque)], parse(r"< [ a ] + >"));
+    assert_eq!(vec![CharClass(deque, Negative)], parse(r"<-[ a ] >"));
 }
 #[test]
 fn ellipsis() {
@@ -59,19 +45,25 @@ fn ellipsis() {
     // Deque of ops and sets inside `<>`.
     let deque = new_deque(vec![Set(set, Inclusive)]);
     // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque)], parse(r"< [ a .. d ] >"));
+    assert_eq!(vec![CharClass(deque, Positive)], parse(r"<[ a .. d ] >"));
 }
 #[test]
 fn escape_chars() {
     // Set of chars inside `[]`. `\s` is a set itself inside the set `[]`.
     // Deque of ops and sets inside `<>`.
     let deque1 = new_deque(vec![Set(PERLS.into(), Inclusive)]);
-    assert_eq!(vec![Class(deque1)], parse(r"< [ \s ] >"));
+    assert_eq!(vec![CharClass(deque1, Positive)], parse(r"<[ \s ] >"));
 
-    // Deque of ops and sets inside `<>`.
+    // Deque of ops and sets inside `<>`. Unifying sets with opposite
+    // membership isn't obvious. If -3 is 3 Exclusive and 3 is Inclusive
+    // then `-3 + 3` is a union which is identical to `-(3 - 3)` = `-()`.
+    // Similarly, `-1 + 7` = `-(1 - 7)` = `-1`. Thus `\s + \S` = `-\s - \s`
+    // = -(\s - \s)` = `-()`. Hence, this is an exclusive set.
+
     let deque2 = new_deque(vec![Set(range_set::Set::new(), Exclusive)]);
-    // A single class denoted by `<[]>`
-    assert_eq!(vec![Class(deque2)], parse(r"< [ \s \S ] >"));
+    // A single class denoted by `<[]>`. No `-` so this is a positive
+    // character class.
+    assert_eq!(vec![CharClass(deque2, Positive)], parse(r"<[ \s \S ] >"));
 }
 #[test]
 fn unicode() {
@@ -79,7 +71,7 @@ fn unicode() {
     let set = vec![Char('a'), Char('こ')].into();
     // Deque of ops and sets inside `<>`.
     let deque = new_deque(vec![Set(set, Inclusive)]);
-    assert_eq!(vec![Class(deque)], parse(r"< [ a こ ] >"));
+    assert_eq!(vec![CharClass(deque, Positive)], parse(r"<[ a こ ] >"));
 }
 #[test]
 fn multiple_char_classes() {
@@ -92,7 +84,7 @@ fn multiple_char_classes() {
     let deque_c = new_deque(vec![Set(set_c, Inclusive)]);
 
     // Multiple character classes
-    assert_eq!(vec![Class(deque_a),
+    assert_eq!(vec![CharClass(deque_a, Positive),
                     Char('b'),
-                    Class(deque_c)], parse(r"<[ a ]> b <[ c ]>"));
+                    CharClass(deque_c, Positive)], parse(r"<[ a ]> b <[ c ]>"));
 }
