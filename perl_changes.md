@@ -1,5 +1,13 @@
 # Differences from Perl 6 by design
 
+## Lookaround
+
+> This is subject to reevaluation after experience has been gained using this.
+My expectation is that the Perl 6 method makes perfect sense to the implementor
+correlating well with names such as *lookbehind* and such. The user will have a
+different perspective and I am not convinced they will like inverting the
+typical *before*/*after* pattern as specified.
+
 In perl6, lookaround assertions have `before` and `after` on the
 wrong side of the leading to weird things like them both being
 backwards when both are used. For example in Perl 6:

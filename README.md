@@ -25,6 +25,14 @@ difficult to read, may do many non-obvious things, and things like literal white
 makes large regex really difficult to work with. rules changes a lot of those aspects
 and so hopefully makes them much more usable.
 
+Note: this is first and foremost a *Rust* library and as such it is valid to deviate from
+the Perl 6 spec given a proper reason, especially if it makes it a better fit to the Rust
+system. However, I will try to keep such deviations to a minimum since Perl 6 is probably
+very well thought out and minor inconsistencies between languages only makes things more
+confusing when you must switch between languages (this is especially problematic with
+regex where every different version uses subtly different syntax and has different features).
+Deviations from the spec will be specified in `perl_changes.md`.
+
 The cargo built docs are not necessarily current with the library. I scope out the
 official Perl6 docs for how syntax works and update my *local* docs to match what I
 understand. Then I base the library on the *local* docs. So the local docs should
