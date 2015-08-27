@@ -246,22 +246,22 @@ pub enum Assertion {
 }
 
 trait SetMatch {
-    fn find_set(&self, &Set, &Membership) -> Option<usize>;
-    fn starts_with_set(&self, &Set, &Membership) -> bool;
+    fn find_set(&self, &Set, Membership) -> Option<usize>;
+    fn starts_with_set(&self, &Set, Membership) -> bool;
 }
 
 impl SetMatch for str {
-    fn find_set(&self, set: &Set, membership: &Membership) -> Option<usize> {
+    fn find_set(&self, set: &Set, membership: Membership) -> Option<usize> {
         self.chars()
-            .position(|c| match *membership {
+            .position(|c| match membership {
                 Inclusive =>  set.contains(c),
                 Exclusive => !set.contains(c),
             })
     }
-    fn starts_with_set(&self, set: &Set, membership: &Membership) -> bool {
+    fn starts_with_set(&self, set: &Set, membership: Membership) -> bool {
         self.chars()
             .take(1)
-            .any(|c| match *membership {
+            .any(|c| match membership {
                 Inclusive =>  set.contains(c),
                 Exclusive => !set.contains(c),
             })
@@ -293,7 +293,7 @@ impl Ast {
         match self {
             &Ast::Char(c) => txt.find(c),
             &Ast::Literal(ref s) => txt.find(s),
-            &Ast::Set(ref set, ref membership) => txt.find_set(set, membership),
+            &Ast::Set(ref set, membership) => txt.find_set(set, membership),
             _ => unimplemented!(),
         }
     }
@@ -303,7 +303,7 @@ impl Ast {
         match self {
             &Ast::Char(c)        => if txt.starts_with(c) { Some(&txt[1..]) } else { None },
             &Ast::Literal(ref s) => if txt.starts_with(s) { Some(&txt[s.len()..]) } else { None },
-            &Ast::Set(ref set, ref membership) => {
+            &Ast::Set(ref set, membership) => {
                 if txt.starts_with_set(set, membership) { Some(&txt[1..]) } else { None }
             },
             _ => unimplemented!(),
