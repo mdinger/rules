@@ -12,3 +12,4 @@ fn parse(s: &str) -> Vec<Ast> {
 
 mod chars;
 mod char_class;
+mod assertions;
