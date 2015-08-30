@@ -124,8 +124,8 @@ pub trait NextPrev {
 }
 
 impl NextPrev for char {
-    fn next(&self) -> Self { char::from_u32(*self as u32 + 1).unwrap() }
-    fn prev(&self) -> Self { char::from_u32(*self as u32 - 1).unwrap() }
+    fn next(&self) -> Self { char::from_u32(*self as u32 + 1).expect("Tried to get the next character but it doesn't exist.") }
+    fn prev(&self) -> Self { char::from_u32(*self as u32 - 1).expect("Tried to get the previous character but it doesn't exist.") }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -351,7 +351,7 @@ impl Parser {
     fn parse(&mut self) -> Result<Vec<Ast>> {
         let mut vec = vec![];
 
-        if self.chars.len() == 0 { return Err(ParseError::EmptyRegex) }
+        if self.chars.is_empty() { return Err(ParseError::EmptyRegex) }
 
         loop {
             let c = self.cur();
@@ -484,7 +484,7 @@ impl Parser {
 
             // Determine if this is a character class or an assertion.
             match c {
-                '>' => return Err(ParseError::ChevronsMayNotBeEmpty),
+                '>' => Err(ParseError::ChevronsMayNotBeEmpty),
                 '-' => self.parse_char_class(Sign::Negative),
                 '+' => self.parse_char_class(Sign::Positive),
                 // Don't want to process this here. Back up so the next call can process it.
@@ -496,7 +496,7 @@ impl Parser {
                 '!' => self.parse_assertion(Sign::Negative),
                 _   => unimplemented!(),
             }
-        } else { return Err(ParseError::ClassMustClose) }
+        } else { Err(ParseError::ClassMustClose) }
     }
     // When a `#` initiates a comment, continue parsing to the end of the line
     fn parse_comment(&mut self) -> Result<Ast> {

@@ -44,15 +44,15 @@ impl Collapser {
     // in the future.
     fn collapse_char_class(&mut self, deque: &mut VecDeque<Ast>, sign: Sign) -> Ast {
         let mut left = deque.pop_front()
-                            .unwrap();
+                            .expect("Class must have at least one element");
 
         while let Some(op) = deque.pop_front() {
             let right = deque.pop_front()
-                             .unwrap();
+                             .expect("A set operator must be followed by another set");
 
             left = match op {
+                // Only operators should appear here.
                 Ast::Op(op) => op.apply(left, right),
-                // Only operators should ever appear here.
                 _ => unreachable!(),
             };
         }
