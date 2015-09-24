@@ -56,8 +56,8 @@
 //! `?` | `<?before foo>` | A positive zero width assertion
 //! `!` | `<!before foo>` | A negative zero width assertion
 //! `[` | `<[ ab ]>` | A character class matches `[ 'a' | 'b' ]`
-//! `-` | `<-[a] + [b]>` | Negated character class: `[ab]` negated
-//! `+` | `<+ [a] >` | Doesn't modify the class.
+//! `-` | `<-[a] + [b]>` | Negated character class: `<[ab]>` negated
+//! `+` | `<+ [a] >` | Same as `[`
 //!
 //! # Lookaround
 //!
