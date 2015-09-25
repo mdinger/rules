@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `rules` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, rules">
+
+    <title>rules - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'rules', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>rules</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-0' class='srclink' href='../src/rules/lib.rs.html#1-133' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'>
+<h1 id='rules' class='section-header'><a href='#rules'>Rules</a></h1>
+<p>Rules uses regular expressions to do pattern matching using syntax
+based upon the Perl 6 regex grammar. The Perl 6 grammar has been heavily
+revised from Perl 5 and should not be equated with it. This may look
+nothing like any regex you have seen before.</p>
+
+<h1 id='note' class='section-header'><a href='#note'>Note</a></h1>
+<p>The only real currently available method is <a href="re/struct.Regex.html#method.is_match"><code>is_match()</code></a>.</p>
+
+<p>This is designed to operate on Unicode scalar values.</p>
+
+<h1 id='syntax' class='section-header'><a href='#syntax'>Syntax</a></h1>
+<p>Whitespace is generally ignored so that a regex can be more readable
+and less dense.</p>
+
+<pre><code class="language-plain">r&quot;fred&quot;    // Normal way
+r&quot;f r e d&quot; // Completely equivalent
+// Will match `apples_oranges` or any other deliminator
+r&quot;apples . oranges&quot;
+</code></pre>
+
+<h1 id='literals' class='section-header'><a href='#literals'>Literals</a></h1>
+<p>Alphanumerics, underscores (<code>_</code>), and everything enclosed within
+quotes (<code>&quot;</code>) and ticks (<code>&#39;</code>) are the only literals.</p>
+
+<pre><code class="language-plain">hello_world   // Matches `hello_world`.
+&quot;carrot cake&quot; // Matches `carrot cake`.
+&#39;apple pie&#39;   // Matches `apple pie`.
+</code></pre>
+
+<p>Everything else must be escaped with a backslash (<code>\*</code>) to literally match.</p>
+
+<pre><code class="language-plain">it\&#39;s\ my\ birthday // Matches `it&#39;s my birthday`.
+</code></pre>
+
+<h1 id='chevrons-' class='section-header'><a href='#chevrons-'>Chevrons: <code>&lt;&gt;</code></a></h1>
+<p>Chevrons are considered a metacharacter grouping operator whose behaviour
+changes depending on the first character found inside. The behavior for
+each different character is:</p>
+
+<table>
+<thead>
+<tr>
+<th>First character</th>
+<th>Example</th>
+<th>Result</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Whitespace</td>
+<td><code>&lt; big small &gt;</code></td>
+<td>Alternative quotes matches <code>[ &#39;big&#39; | &#39;small&#39; ]</code></td>
+</tr>
+<tr>
+<td>alphabetic</td>
+<td><code>&lt;alpha&gt;</code></td>
+<td>Named character class which capture</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td><code>&lt;?before foo&gt;</code></td>
+<td>A positive zero width assertion</td>
+</tr>
+<tr>
+<td><code>!</code></td>
+<td><code>&lt;!before foo&gt;</code></td>
+<td>A negative zero width assertion</td>
+</tr>
+<tr>
+<td><code>[</code></td>
+<td><code>&lt;[ ab ]&gt;</code></td>
+<td>A character class matches <code>[ &#39;a&#39; | &#39;b&#39; ]</code></td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td><code>&lt;-[a] + [b]&gt;</code></td>
+<td>Negated character class: <code>[ab]</code> negated</td>
+</tr>
+<tr>
+<td><code>+</code></td>
+<td><code>&lt;+ [a] &gt;</code></td>
+<td>Doesn&#39;t modify the class.</td>
+</tr>
+</tbody>
+</table>
+
+<h1 id='lookaround' class='section-header'><a href='#lookaround'>Lookaround</a></h1>
+<ul>
+<li>lookahead - <code>foo &lt;?after bar&gt;</code> matches <code>foo</code> in <code>foobar</code></li>
+<li>negative lookahead - <code>foo &lt;!after bar&gt;</code> matches <code>foo</code> in <code>foobaz</code></li>
+<li>lookbehind - <code>&lt;?before foo&gt; bar</code> matches <code>bar</code> in <code>foobar</code></li>
+<li>negative lookbehind - <code>&lt;!before foo&gt; bar</code> matches <code>bar</code> in <code>sushibar</code></li>
+</ul>
+
+<p>An example with both:
+<code>&lt;?before foo&gt; bar &lt;?after baz&gt;</code>  matches <code>bar</code> in <code>foobarbaz</code></p>
+
+<h1 id='set-operators' class='section-header'><a href='#set-operators'>Set operators</a></h1>
+<p>These operators can be applied to groups which will be analyzed later:</p>
+
+<pre><code class="language-plain">+       Union                // [123] + [345] = [12345]
+|       Union                // Same
+&amp;       Intersection         // [123] &amp; [345] = [3]
+-       Difference           // [123] - [345] = [12]
+^       Symmetric difference // [123] ^ [345] = [1245]
+</code></pre>
+
+<h1 id='character-classes' class='section-header'><a href='#character-classes'>Character classes</a></h1>
+<h2 id='default-character-classes' class='section-header'><a href='#default-character-classes'>Default character classes</a></h2>
+<table>
+<thead>
+<tr>
+<th>Character</th>
+<th>Matches</th>
+<th>Inverse</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>.</code></td>
+<td>Any character</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>\d</code></td>
+<td>Digit</td>
+<td><code>\D</code></td>
+</tr>
+<tr>
+<td><code>\h</code></td>
+<td>Horizontal whitespace</td>
+<td><code>\H</code></td>
+</tr>
+<tr>
+<td><code>\n</code></td>
+<td>Newline</td>
+<td><code>\N</code></td>
+</tr>
+<tr>
+<td><code>\s</code></td>
+<td>Any whitespace</td>
+<td><code>\S</code></td>
+</tr>
+<tr>
+<td><code>\t</code></td>
+<td>Tab</td>
+<td><code>\T</code></td>
+</tr>
+<tr>
+<td><code>\w</code></td>
+<td>Alphanumeric or <code>_</code></td>
+<td><code>\W</code></td>
+</tr>
+</tbody>
+</table>
+
+<h2 id='custom-character-classes' class='section-header'><a href='#custom-character-classes'>Custom character classes</a></h2>
+<p>Characters inside a set of <code>&lt;[ ]&gt;</code> form a custom character
+class:</p>
+
+<pre><code class="language-plain">// Matches `a` or `b` or `c`
+&lt;[ a b c ]&gt;
+
+// `..` expresses a range so this matches
+// from `a` to `g` or a digit
+&lt;[ a .. g \d ]&gt;
+
+// The `[]` bind the sets together into (non-capturing)
+// groups so set operators can be used.
+&lt;[0-9] - [13579]&gt; // Matches an even number
+&lt;\d - [13579]&gt;    // Same
+</code></pre>
+
+<h1 id='comments' class='section-header'><a href='#comments'>Comments</a></h1>
+<p>Comments are allowed inside a regex.</p>
+
+<pre><code class="language-plain">// This matches `myregex`
+r&quot;my # This is a comment which goes to the end of the line
+regex&quot;
+</code></pre>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table>
+                    <tr class=' module-item'>
+                        <td><a class='mod' href='re/index.html'
+                               title='rules::re'>re</a></td>
+                        <td class='docblock short'>
+                             
+                        </td>
+                    </tr>
+                </table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "rules";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>
