@@ -7,7 +7,7 @@ readme = "README.md"
 description = "An implementation of Perl 6 regex rules"
 homepage = "https://github.com/mdinger/rules"
 repository = "https://github.com/mdinger/rules"
-license = "Unlicense/MIT"
+license = "MIT/Apache-2.0"
 
 
 [[bin]]

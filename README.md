@@ -53,3 +53,6 @@ and this to your crate root:
 ```rust
 extern crate rules;
 ```
+
+## License
+Dual licensed under MIT and Apache. See LICENSE-APACHE and LICENSE-MIT for details.
